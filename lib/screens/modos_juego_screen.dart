@@ -28,7 +28,7 @@ class _ModoDisponible {
 const _modos = <_ModoDisponible>[
   _ModoDisponible(
     titulo: '1 contra 1',
-    descripcion: 'Cada jugador elige un palo y se juega la revancha',
+    descripcion: 'Cada jugador elige un palo y se juega la carrera',
     icono: Icons.people_alt_rounded,
     pantalla: _abrirUnoVsUno,
   ),

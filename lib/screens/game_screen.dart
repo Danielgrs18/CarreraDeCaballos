@@ -12,33 +12,48 @@ import '../widgets/carta_espanola.dart';
 import '../widgets/controles_juego.dart';
 import '../widgets/mazo.dart';
 import '../widgets/pista.dart';
+import '../widgets/selector_palo.dart';
 import '../widgets/tapete.dart';
 
 enum _Fase { preparado, corriendo, terminado }
 
 /// La mesa de juego: se ve en horizontal y con la pantalla completa.
 class GameScreen extends StatefulWidget {
-  const GameScreen({super.key});
+  /// En Partida rápida corren los 4 palos. En el 1 contra 1 solo corren 2,
+  /// y el jugador elige cuáles en el velo de salida.
+  final bool esUnoVsUno;
+
+  const GameScreen({super.key, this.esUnoVsUno = false});
 
   @override
   State<GameScreen> createState() => _GameScreenState();
 }
 
 class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
-  LogicaJuego _logica = LogicaJuego();
+  late LogicaJuego _logica;
 
   var _fase = _Fase.preparado;
   var _modo = ModoJuego.manual;
   var _velocidad = Velocidad.normal;
+
+  // Solo se usan en el 1 contra 1; por defecto van en palos distintos.
+  var _jugador1 = Palo.oros;
+  var _jugador2 = Palo.copas;
 
   Timer? _reloj;
   int _turno = 0;
   Palo? _destacado;
   String? _aviso;
 
+  /// Una pista nueva, con los palos que tocan según el modo.
+  LogicaJuego _nuevaPartida() => widget.esUnoVsUno
+      ? LogicaJuego(palos: [_jugador1, _jugador2])
+      : LogicaJuego();
+
   @override
   void initState() {
     super.initState();
+    _logica = _nuevaPartida();
     WidgetsBinding.instance.addObserver(this);
     // Pedida dentro de initState, la rotación se pierde en algunos móviles
     // porque la actividad aún se está montando: se pide tras el primer
@@ -57,7 +72,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _reloj?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+    // Todos los menús de la app son verticales, vengas de donde vengas
+    // (menú principal o catálogo de modos): se deja siempre así al salir.
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
     super.dispose();
   }
 
@@ -116,11 +136,31 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   void _revancha() {
     _pararReloj();
     setState(() {
-      _logica = LogicaJuego();
+      _logica = _nuevaPartida();
       _fase = _Fase.preparado;
       _turno = 0;
       _destacado = null;
       _aviso = null;
+    });
+  }
+
+  // --- Elección de jugadores (1 contra 1) ---------------------------------
+
+  void _elegirJugador1(Palo palo) {
+    setState(() {
+      _jugador1 = palo;
+      // Si justo era el palo del otro jugador, este pasa al primero libre.
+      if (_jugador2 == palo) {
+        _jugador2 = Palo.values.firstWhere((p) => p != palo);
+      }
+      _logica = _nuevaPartida();
+    });
+  }
+
+  void _elegirJugador2(Palo palo) {
+    setState(() {
+      _jugador2 = palo;
+      _logica = _nuevaPartida();
     });
   }
 
@@ -347,6 +387,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   height: 1,
                   color: AppColors.oro.withValues(alpha: 0.5),
                 ),
+                if (widget.esUnoVsUno) ...[
+                  const SizedBox(height: 14),
+                  _selectorJugadores(),
+                ],
                 const SizedBox(height: 14),
                 ElevatedButton(
                   onPressed: _comenzar,
@@ -381,6 +425,47 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// Los dos selectores del 1 contra 1: el segundo excluye lo que ya haya
+  /// elegido el primero, así nunca pueden coincidir.
+  Widget _selectorJugadores() {
+    final disponiblesJugador2 =
+        Palo.values.where((p) => p != _jugador1).toList();
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _etiquetaJugador('Jugador 1'),
+        const SizedBox(height: 6),
+        SelectorPalo(
+          opciones: Palo.values,
+          seleccionado: _jugador1,
+          onCambio: _elegirJugador1,
+        ),
+        const SizedBox(height: 12),
+        _etiquetaJugador('Jugador 2'),
+        const SizedBox(height: 6),
+        SelectorPalo(
+          opciones: disponiblesJugador2,
+          seleccionado: _jugador2,
+          onCambio: _elegirJugador2,
+        ),
+      ],
+    );
+  }
+
+  Widget _etiquetaJugador(String texto) {
+    return Text(
+      texto.toUpperCase(),
+      style: TextStyle(
+        fontFamily: AppTheme.familiaTitulo,
+        fontSize: 11,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 1.4,
+        color: AppColors.oroClaro.withValues(alpha: 0.65),
       ),
     );
   }

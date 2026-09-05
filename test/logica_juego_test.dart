@@ -158,4 +158,60 @@ void main() {
       expect(juego.cartasEnMazo + juego.cartasDescartadas, 36 - 20);
     });
   });
+
+  group('Carrera reducida (1 contra 1)', () {
+    test('con 2 palos, solo esos dos compiten y llevan la baraja a medias',
+        () {
+      final juego = LogicaJuego(
+        pasos: 6,
+        palos: [Palo.oros, Palo.espadas],
+        random: Random(3),
+      );
+
+      expect(juego.caballos.keys.toSet(), {Palo.oros, Palo.espadas});
+      // 2 palos x 10 valores, menos los 2 caballos que ya corren = 18.
+      expect(juego.cartasPista.length + juego.cartasEnMazo, 18);
+      expect(
+        juego.cartasPista.every(
+          (c) => c.palo == Palo.oros || c.palo == Palo.espadas,
+        ),
+        isTrue,
+      );
+    });
+
+    test('el paso se levanta cuando lo superan los dos, no los cuatro', () {
+      for (var semilla = 0; semilla < 25; semilla++) {
+        final juego = LogicaJuego(
+          pasos: 6,
+          palos: [Palo.copas, Palo.bastos],
+          random: Random(semilla),
+        );
+
+        var turnos = 0;
+        while (!juego.terminada && turnos++ < _maxTurnos) {
+          final resultado = juego.jugarTurno();
+          // Solo pueden avanzar o levantarse cartas de los dos palos en
+          // juego: si saliera un oro o una espada no debería pasar nada.
+          expect({Palo.copas, Palo.bastos}, contains(resultado.avanza));
+        }
+
+        expect(juego.terminada, isTrue);
+        expect({Palo.copas, Palo.bastos}, contains(juego.ganador));
+      }
+    });
+
+    test('hacen falta al menos 2 caballos para competir', () {
+      expect(
+        () => LogicaJuego(palos: [Palo.oros]),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+
+    test('los palos de la carrera no pueden repetirse', () {
+      expect(
+        () => LogicaJuego(palos: [Palo.oros, Palo.oros, Palo.copas]),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+  });
 }

@@ -37,10 +37,16 @@ class PistaWidget extends StatelessWidget {
         final anchoCelda =
             ((ancho - _anchoPuerta - _anchoMeta) / celdas).clamp(18.0, 140.0);
 
+        // Puede haber menos de 4 caballos (el 1 contra 1 solo trae 2): se
+        // reparten los carriles según los que compitan de verdad, siempre en
+        // el orden canónico de los palos.
+        final corredores =
+            Palo.values.where(logica.caballos.containsKey).toList();
+
         // La hilera de cartas de paso se lleva algo menos de un tercio del
-        // alto; el resto se reparte entre los cuatro carriles.
+        // alto; el resto se reparte entre los carriles.
         final altoTrampas = (alto * 0.27).clamp(44.0, 104.0);
-        final altoCarril = ((alto - altoTrampas - 6) / Palo.values.length)
+        final altoCarril = ((alto - altoTrampas - 6) / corredores.length)
             .clamp(28.0, 92.0);
 
         return Column(
@@ -56,7 +62,7 @@ class PistaWidget extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            for (final palo in Palo.values)
+            for (final palo in corredores)
               SizedBox(
                 height: altoCarril,
                 child: _Carril(

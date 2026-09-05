@@ -7,6 +7,10 @@ import 'package:carrera_caballos/models/carta.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// Cuántos caballos hay corriendo en la pista mostrada ahora mismo.
+int _carriles(WidgetTester tester) =>
+    tester.widget<PistaWidget>(find.byType(PistaWidget)).logica.caballos.length;
+
 void main() {
   testWidgets(
       'el menú ofrece partida rápida, modos de juego y desbloquear más',
@@ -19,7 +23,8 @@ void main() {
     expect(find.text('Baraja española'), findsNothing);
   });
 
-  testWidgets('modos de juego enseña el catálogo y aún no hace nada',
+  testWidgets(
+      'modos de juego enseña el catálogo; solo 1 contra 1 está listo',
       (tester) async {
     await tester.pumpWidget(const CarreraCaballosApp());
 
@@ -30,13 +35,89 @@ void main() {
     expect(find.text('Torneo personalizado'), findsOneWidget);
     expect(find.text('Partida personalizada'), findsOneWidget);
 
-    await tester.tap(find.text('1 contra 1'));
+    // Los otros dos todavía solo avisan.
+    await tester.tap(find.text('Torneo personalizado'));
     await tester.pump();
-    expect(find.text('1 contra 1: próximamente'), findsOneWidget);
+    expect(find.text('Torneo personalizado: próximamente'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Volver'));
     await tester.pumpAndSettle();
     expect(find.text('Partida rápida'), findsOneWidget);
+  });
+
+  group('1 contra 1', () {
+    testWidgets('el velo deja elegir un palo por jugador, sin repetirse',
+        (tester) async {
+      await tester.pumpWidget(const CarreraCaballosApp());
+
+      await tester.tap(find.text('Modos de juego'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('1 contra 1'));
+      await tester.pumpAndSettle();
+
+      // Por defecto, Oros (jugador 1) contra Copas (jugador 2): 2 carriles.
+      expect(find.byType(CartaEspanola), findsWidgets);
+      expect(_carriles(tester), 2);
+      // Oros solo puede estar en el selector del jugador 1: el del jugador 2
+      // nunca ofrece el palo que ya tiene el otro.
+      expect(find.text('Oros'), findsOneWidget);
+      expect(find.text('Copas'), findsNWidgets(2));
+      expect(find.text('Espadas'), findsNWidgets(2));
+      expect(find.text('Bastos'), findsNWidgets(2));
+
+      // El selector del jugador 1 se construye antes que el del jugador 2:
+      // el primer resultado de cada palo es siempre el suyo.
+      await tester.tap(find.text('Espadas').first);
+      await tester.pumpAndSettle();
+      expect(_carriles(tester), 2);
+      // El jugador 1 solo ofrece Espadas a sí mismo (ya lo tiene elegido);
+      // el jugador 2 sigue siendo Copas, sin cambios.
+      expect(find.text('Espadas'), findsOneWidget);
+      expect(find.text('Copas'), findsNWidgets(2));
+
+      // Si el jugador 1 elige el palo del jugador 2, el jugador 2 se mueve
+      // a otro distinto (nunca pueden coincidir).
+      await tester.tap(find.text('Copas').first);
+      await tester.pumpAndSettle();
+      expect(_carriles(tester), 2);
+      final logica = tester
+          .widget<PistaWidget>(find.byType(PistaWidget))
+          .logica;
+      expect(logica.caballos.keys.toSet(), hasLength(2));
+      expect(logica.caballos.containsKey(Palo.copas), isTrue);
+      expect(logica.caballos.containsKey(Palo.espadas), isFalse);
+    });
+
+    testWidgets('se juega igual que la partida rápida: gana y hay revancha',
+        (tester) async {
+      await tester.pumpWidget(const CarreraCaballosApp());
+
+      await tester.tap(find.text('Modos de juego'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('1 contra 1'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Comenzar'));
+      await tester.pump(const Duration(milliseconds: 400));
+
+      for (var i = 0; i < 200 && find.text('GANA').evaluate().isEmpty; i++) {
+        await tester.tap(find.bySemanticsLabel('Sacar carta del mazo').first);
+        await tester.pump(const Duration(milliseconds: 500));
+      }
+      expect(find.text('GANA'), findsOneWidget);
+      // El ganador es uno de los dos elegidos: Oros o Copas.
+      final ganaOros = find.text('OROS').evaluate().isNotEmpty;
+      final ganaCopas = find.text('COPAS').evaluate().isNotEmpty;
+      expect(ganaOros || ganaCopas, isTrue);
+
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Revancha'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('GANA'), findsNothing);
+      expect(find.text('Elige tu caballo ganador'), findsOneWidget);
+      expect(_carriles(tester), 2);
+    });
   });
 
   testWidgets('"Desbloquear más" todavía no lleva a ninguna parte',

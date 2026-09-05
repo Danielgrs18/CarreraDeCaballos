@@ -158,6 +158,45 @@ void main() {
     );
   });
 
+  testWidgets('1 contra 1: velo con selectores', (tester) async {
+    await _lienzo(tester, const Size(880, 420));
+
+    await tester.pumpWidget(const CarreraCaballosApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Modos de juego'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('1 contra 1'));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('capturas/uno_vs_uno_velo.png'),
+    );
+  });
+
+  testWidgets('1 contra 1: mesa con solo 2 carriles', (tester) async {
+    await _lienzo(tester, const Size(880, 420));
+
+    await tester.pumpWidget(const CarreraCaballosApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Modos de juego'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('1 contra 1'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Comenzar'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    for (var i = 0; i < 10; i++) {
+      await tester.tap(find.bySemanticsLabel('Sacar carta del mazo').first);
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('capturas/uno_vs_uno_mesa.png'),
+    );
+  });
+
   testWidgets('mesa en marcha', (tester) async {
     await _lienzo(tester, const Size(880, 420));
 

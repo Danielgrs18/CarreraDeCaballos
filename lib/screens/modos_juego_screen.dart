@@ -2,18 +2,27 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/tapete.dart';
+import 'game_screen.dart';
 
-/// Un modo de juego que se podrá elegir desde esta pantalla.
+Widget _abrirUnoVsUno(BuildContext context) =>
+    const GameScreen(esUnoVsUno: true);
+
+/// Un modo de juego que se podrá elegir desde esta pantalla. Si [pantalla]
+/// es `null`, todavía no está listo y tocarlo solo avisa "próximamente".
 class _ModoDisponible {
   final String titulo;
   final String descripcion;
   final IconData icono;
+  final WidgetBuilder? pantalla;
 
   const _ModoDisponible({
     required this.titulo,
     required this.descripcion,
     required this.icono,
+    this.pantalla,
   });
+
+  bool get disponible => pantalla != null;
 }
 
 const _modos = <_ModoDisponible>[
@@ -21,6 +30,7 @@ const _modos = <_ModoDisponible>[
     titulo: '1 contra 1',
     descripcion: 'Cada jugador elige un palo y se juega la revancha',
     icono: Icons.people_alt_rounded,
+    pantalla: _abrirUnoVsUno,
   ),
   _ModoDisponible(
     titulo: 'Torneo personalizado',
@@ -34,8 +44,7 @@ const _modos = <_ModoDisponible>[
   ),
 ];
 
-/// Catálogo de modos de juego. De momento son solo un adelanto: todavía no
-/// se puede jugar a ninguno.
+/// Catálogo de modos de juego.
 class ModosJuegoScreen extends StatelessWidget {
   const ModosJuegoScreen({super.key});
 
@@ -48,6 +57,15 @@ class ModosJuegoScreen extends StatelessWidget {
           duration: const Duration(seconds: 2),
         ),
       );
+  }
+
+  void _abrir(BuildContext context, _ModoDisponible modo) {
+    if (modo.pantalla != null) {
+      Navigator.of(context)
+          .push(MaterialPageRoute<void>(builder: modo.pantalla!));
+    } else {
+      _proximamente(context, modo.titulo);
+    }
   }
 
   @override
@@ -71,7 +89,7 @@ class ModosJuegoScreen extends StatelessWidget {
                         final modo = _modos[i];
                         return _TarjetaModo(
                           modo: modo,
-                          onTap: () => _proximamente(context, modo.titulo),
+                          onTap: () => _abrir(context, modo),
                         );
                       },
                     ),
@@ -164,25 +182,31 @@ class _TarjetaModo extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: AppColors.oroClaro.withValues(alpha: 0.5),
+              if (modo.disponible)
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.oroClaro.withValues(alpha: 0.8),
+                )
+              else
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppColors.oroClaro.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: Text(
+                    'Pronto',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.4,
+                      color: AppColors.oroClaro.withValues(alpha: 0.75),
+                    ),
                   ),
                 ),
-                child: Text(
-                  'Pronto',
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.4,
-                    color: AppColors.oroClaro.withValues(alpha: 0.75),
-                  ),
-                ),
-              ),
             ],
           ),
         ),

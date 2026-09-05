@@ -81,16 +81,25 @@ class LogicaJuego {
         _descartes = [],
         _random = random;
 
-  factory LogicaJuego({int pasos = 6, Random? random}) {
+  /// Con los 4 palos por defecto corren los 4 caballos (Partida rápida);
+  /// pasando menos —siempre 2 o más— se juegan carreras reducidas, como el
+  /// 1 contra 1.
+  factory LogicaJuego({
+    int pasos = 6,
+    List<Palo> palos = Palo.values,
+    Random? random,
+  }) {
     assert(pasos >= 1 && pasos <= 20, 'La pista debe tener entre 1 y 20 pasos');
+    assert(palos.length >= 2, 'Hacen falta al menos 2 caballos para competir');
+    assert(palos.toSet().length == palos.length, 'Los palos no pueden repetirse');
     final rnd = random ?? Random();
 
-    final mazo = Baraja.completa();
+    final mazo = Baraja.completa(palos: palos);
 
-    // 1. Los 4 caballos salen de la baraja y se ponen en la línea de salida.
+    // 1. Los caballos salen de la baraja y se ponen en la línea de salida.
     mazo.removeWhere((c) => c.esCaballo);
     final corredores = {
-      for (final palo in Palo.values) palo: Caballo(palo),
+      for (final palo in palos) palo: Caballo(palo),
     };
 
     // 2. Se baraja el resto y se tiende la pista boca abajo.

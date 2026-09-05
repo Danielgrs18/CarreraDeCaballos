@@ -22,9 +22,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Versión fija en vez de "stable": así una nueva versión de Flutter no
+      # puede romper la publicación por sorpresa con avisos nuevos.
       - uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version: '3.32.4'
           cache: true
 
       - run: flutter pub get

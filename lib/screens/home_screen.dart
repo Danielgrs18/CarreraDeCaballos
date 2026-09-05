@@ -149,8 +149,8 @@ class _AbanicoCaballos extends StatelessWidget {
           for (var i = 0; i < palos.length; i++)
             Transform(
               alignment: Alignment.bottomCenter,
-              transform: Matrix4.identity()
-                ..translate((i - (palos.length - 1) / 2) * 46.0, 0.0)
+              transform: Matrix4.translationValues(
+                  (i - (palos.length - 1) / 2) * 46.0, 0.0, 0.0)
                 ..rotateZ((i - (palos.length - 1) / 2) * 0.19),
               child: Transform.translate(
                 offset: Offset(

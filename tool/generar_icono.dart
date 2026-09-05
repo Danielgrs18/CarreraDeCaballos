@@ -38,10 +38,10 @@ class _Herradura {
   final double anguloB; // extremo derecho de la boca
   final double barrido; // lo que ocupa el hierro, de B a A por abajo
 
-  _Herradura(Rect area, {double gradosBoca = 66})
+  _Herradura(Rect area, {double gradosBoca = 66, double grosorRelativo = 0.43})
       : centro = area.center,
         radioFuera = area.width * 0.5,
-        radioDentro = area.width * 0.285,
+        radioDentro = area.width * 0.5 * (1 - grosorRelativo),
         anguloA = _rad(270 - gradosBoca / 2),
         anguloB = _rad(270 + gradosBoca / 2),
         barrido = _rad(360 - gradosBoca);
@@ -138,6 +138,25 @@ void _dibujarHerradura(Canvas canvas, Rect area) {
   }
 }
 
+/// Versión sin agujeros, sin anillo y con un hierro mucho más grueso: a
+/// tamaño normal se ve tosca, pero es lo que hace falta para que se
+/// reconozca en la pestaña del navegador (favicon.png sale a 16x16 de
+/// verdad, y ahí cualquier detalle fino se convierte en una mancha).
+void _dibujarHerraduraFavicon(Canvas canvas, Rect area) {
+  final herradura = _Herradura(area, grosorRelativo: 0.62);
+  final silueta = herradura.silueta;
+
+  canvas.drawPath(silueta, _rellenoOro(area));
+  canvas.drawPath(
+    silueta,
+    Paint()
+      ..color = _tinta.withValues(alpha: 0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = area.width * 0.05
+      ..strokeJoin = StrokeJoin.round,
+  );
+}
+
 Future<ui.Image> _renderizar(void Function(Canvas) pintar, double lado) async {
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
@@ -203,5 +222,19 @@ void main() {
       _dibujarHerradura(c, zonaClasica);
     }, _lienzo);
     await _guardarPng(maestro, 'assets/icon/maestro.png');
+
+    // Fuente aparte para el favicon: la web la reduce a 16x16 de verdad,
+    // donde el anillo y los agujeros de la versión normal se emborronan.
+    final zonaFavicon = Rect.fromLTWH(
+      _lienzo * 0.08,
+      _lienzo * 0.08,
+      _lienzo * 0.84,
+      _lienzo * 0.84,
+    );
+    final favicon = await _renderizar((c) {
+      _dibujarFondo(c, const Size(_lienzo, _lienzo));
+      _dibujarHerraduraFavicon(c, zonaFavicon);
+    }, _lienzo);
+    await _guardarPng(favicon, 'assets/icon/favicon_fuente.png');
   });
 }

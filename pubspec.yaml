@@ -25,6 +25,10 @@ flutter_launcher_icons:
   ios: true
   web:
     generate: true
+    # El favicon de verdad sale a 16x16, donde el anillo y los agujeros de
+    # la versión normal se emborronan: usa un trazo aparte, más grueso y
+    # sin detalles finos.
+    image_path: "assets/icon/favicon_fuente.png"
     background_color: "#0E5A38"
     theme_color: "#0E5A38"
   image_path: "assets/icon/maestro.png"

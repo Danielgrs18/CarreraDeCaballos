@@ -46,8 +46,16 @@ class PistaWidget extends StatelessWidget {
         // La hilera de cartas de paso se lleva algo menos de un tercio del
         // alto; el resto se reparte entre los carriles.
         final altoTrampas = (alto * 0.27).clamp(44.0, 104.0);
-        final altoCarril = ((alto - altoTrampas - 6) / corredores.length)
-            .clamp(28.0, 92.0);
+        final disponibleCarriles = alto - altoTrampas - 6;
+        final n = corredores.length;
+        final altoCarril = (disponibleCarriles / n).clamp(28.0, 92.0);
+
+        // Con menos de 4 caballos (el 1 contra 1 trae solo 2) sobra alto:
+        // en vez de dejarlo todo apelmazado arriba, una parte se convierte
+        // en un hueco entre carriles —no mucho— y el resto centra el bloque.
+        final sobrante = math.max(0.0, disponibleCarriles - n * altoCarril);
+        final separacion =
+            n > 1 ? math.min(sobrante / (n - 1), 16.0) : 0.0;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -62,21 +70,31 @@ class PistaWidget extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            for (final palo in corredores)
-              SizedBox(
-                height: altoCarril,
-                child: _Carril(
-                  palo: palo,
-                  posicion: logica.caballos[palo]!.posicion,
-                  celdas: celdas,
-                  anchoPuerta: _anchoPuerta,
-                  anchoMeta: _anchoMeta,
-                  anchoCelda: anchoCelda,
-                  alto: altoCarril,
-                  duracion: duracionAnimacion,
-                  destacado: destacado == palo,
-                ),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var i = 0; i < corredores.length; i++) ...[
+                    if (i > 0) SizedBox(height: separacion),
+                    SizedBox(
+                      height: altoCarril,
+                      child: _Carril(
+                        palo: corredores[i],
+                        posicion: logica.caballos[corredores[i]]!.posicion,
+                        celdas: celdas,
+                        anchoPuerta: _anchoPuerta,
+                        anchoMeta: _anchoMeta,
+                        anchoCelda: anchoCelda,
+                        alto: altoCarril,
+                        duracion: duracionAnimacion,
+                        destacado: destacado == corredores[i],
+                      ),
+                    ),
+                  ],
+                ],
               ),
+            ),
           ],
         );
       },
@@ -234,12 +252,26 @@ class _Carril extends StatelessWidget {
     required this.destacado,
   });
 
+  /// El centro horizontal que le toca a la ficha según su posición: en el
+  /// cajón de salida, centrada ahí (para no tapar el emblema del palo); en
+  /// marcha, en el hueco central de la casilla que ocupa —no en la línea
+  /// que separa una casilla de la siguiente, que es donde quedaba antes.
+  ///
+  /// Antes de la salida (posición 0) se apoya justo a la entrada de la
+  /// pista, tocando el cajón pero sin invadirlo nunca: si se centrase
+  /// dentro del cajón taparía por completo el emblema, que también está
+  /// centrado ahí.
+  double _centroFicha(double anchoFicha) {
+    if (posicion <= 0) return anchoPuerta + anchoFicha / 2;
+    final indiceCasilla = (posicion - 1).clamp(0, celdas - 1);
+    return anchoPuerta + indiceCasilla * anchoCelda + anchoCelda / 2;
+  }
+
   @override
   Widget build(BuildContext context) {
     final color = AppColors.dePalo(palo);
     final anchoFicha = ((alto - 8) * kProporcionCarta).clamp(16.0, 64.0);
-    final izquierda =
-        anchoPuerta + posicion * anchoCelda - anchoFicha / 2;
+    final izquierda = _centroFicha(anchoFicha) - anchoFicha / 2;
     final anchoTotal = anchoPuerta + celdas * anchoCelda + anchoMeta;
 
     return Padding(

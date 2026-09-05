@@ -3,6 +3,7 @@ import 'package:carrera_caballos/screens/game_screen.dart';
 import 'package:carrera_caballos/widgets/pista.dart';
 import 'package:carrera_caballos/widgets/carta_espanola.dart';
 import 'package:carrera_caballos/widgets/cartel_ganador.dart';
+import 'package:carrera_caballos/widgets/paint/palos.dart';
 import 'package:carrera_caballos/models/carta.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -146,6 +147,33 @@ void main() {
     expect(find.text('Comenzar'), findsOneWidget);
     expect(find.text('Manual'), findsOneWidget);
     expect(find.text('Automático'), findsOneWidget);
+  });
+
+  testWidgets(
+      'los caballos en el cajón de salida no tapan el emblema de su palo',
+      (tester) async {
+    await tester.pumpWidget(const CarreraCaballosApp());
+
+    await tester.tap(find.text('Partida rápida'));
+    await tester.pumpAndSettle();
+
+    final pista = find.byType(PistaWidget);
+    final emblemas =
+        find.descendant(of: pista, matching: find.byType(EmblemaPalo));
+    final fichas =
+        find.descendant(of: pista, matching: find.byType(CartaEspanola));
+
+    expect(emblemas.evaluate().length, 4);
+    expect(fichas.evaluate().length, 4);
+
+    // Cada emblema precede a la ficha de su propio carril en el árbol, así
+    // que van emparejados por índice: ninguna ficha debe empezar antes de
+    // que termine el cajón (emblema) de su carril.
+    for (var i = 0; i < 4; i++) {
+      final cajon = tester.getRect(emblemas.at(i));
+      final caballo = tester.getRect(fichas.at(i));
+      expect(caballo.left, greaterThanOrEqualTo(cajon.right - 1));
+    }
   });
 
   testWidgets('al comenzar en manual se destapa carta tocando el mazo',

@@ -25,7 +25,7 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
-  final LogicaJuego _logica = LogicaJuego();
+  LogicaJuego _logica = LogicaJuego();
 
   var _fase = _Fase.preparado;
   var _modo = ModoJuego.manual;
@@ -111,6 +111,19 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void _finalizar() => Navigator.of(context).maybePop();
 
+  /// Vuelve a la pantalla de "Comenzar" con una pista nueva, sin salir de
+  /// la mesa. El modo y la velocidad elegidos se mantienen.
+  void _revancha() {
+    _pararReloj();
+    setState(() {
+      _logica = LogicaJuego();
+      _fase = _Fase.preparado;
+      _turno = 0;
+      _destacado = null;
+      _aviso = null;
+    });
+  }
+
   // --- Reloj del modo automático ------------------------------------------
 
   /// Deja el temporizador acorde al modo, la velocidad y la fase actuales.
@@ -192,7 +205,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         ),
         if (_fase == _Fase.terminado && ganador != null)
           Positioned.fill(
-            child: CartelGanador(palo: ganador, onFinalizar: _finalizar),
+            child: CartelGanador(
+              palo: ganador,
+              onFinalizar: _finalizar,
+              onRevancha: _revancha,
+            ),
           ),
       ],
     );

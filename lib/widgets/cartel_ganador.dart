@@ -12,10 +12,14 @@ class CartelGanador extends StatefulWidget {
   final Palo palo;
   final VoidCallback onFinalizar;
 
+  /// Reinicia la partida sin salir de la mesa.
+  final VoidCallback onRevancha;
+
   const CartelGanador({
     super.key,
     required this.palo,
     required this.onFinalizar,
+    required this.onRevancha,
   });
 
   @override
@@ -121,9 +125,19 @@ class _CartelGanadorState extends State<CartelGanador>
                             ),
                           ),
                           const SizedBox(height: 18),
-                          ElevatedButton(
-                            onPressed: widget.onFinalizar,
-                            child: const Text('Finalizar'),
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 10,
+                            children: [
+                              ElevatedButton(
+                                onPressed: widget.onRevancha,
+                                child: const Text('Revancha'),
+                              ),
+                              OutlinedButton(
+                                onPressed: widget.onFinalizar,
+                                child: const Text('Finalizar'),
+                              ),
+                            ],
                           ),
                         ],
                       ),

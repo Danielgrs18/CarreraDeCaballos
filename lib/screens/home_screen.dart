@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../widgets/carta_espanola.dart';
 import '../widgets/tapete.dart';
 import 'game_screen.dart';
+import 'modos_juego_screen.dart';
 
 /// Menú principal.
 class HomeScreen extends StatefulWidget {
@@ -51,6 +52,12 @@ class _HomeScreenState extends State<HomeScreen> {
       );
   }
 
+  Future<void> _modosJuego() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const ModosJuegoScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -89,6 +96,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       _BotonMenu(
                         texto: 'Partida rápida',
                         onPressed: _partidaRapida,
+                      ),
+                      const SizedBox(height: 16),
+                      _BotonMenu(
+                        texto: 'Modos de juego',
+                        secundario: true,
+                        onPressed: _modosJuego,
                       ),
                       const SizedBox(height: 16),
                       _BotonMenu(

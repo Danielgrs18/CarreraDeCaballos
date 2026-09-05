@@ -128,6 +128,20 @@ void main() {
     );
   });
 
+  testWidgets('modos de juego', (tester) async {
+    await _lienzo(tester, const Size(420, 860));
+
+    await tester.pumpWidget(const CarreraCaballosApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Modos de juego'));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('capturas/modos_juego.png'),
+    );
+  });
+
   testWidgets('velo de salida', (tester) async {
     await _lienzo(tester, const Size(880, 420));
 
@@ -195,7 +209,7 @@ void main() {
         theme: AppTheme.tema,
         home: Scaffold(
           body: Tapete(
-            child: CartelGanador(palo: Palo.bastos, onFinalizar: () {}),
+            child: CartelGanador(palo: Palo.bastos, onFinalizar: () {}, onRevancha: () {}),
           ),
         ),
       ),

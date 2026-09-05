@@ -8,13 +8,35 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('el menú ofrece partida rápida y desbloquear más',
+  testWidgets(
+      'el menú ofrece partida rápida, modos de juego y desbloquear más',
       (tester) async {
     await tester.pumpWidget(const CarreraCaballosApp());
 
     expect(find.text('Partida rápida'), findsOneWidget);
+    expect(find.text('Modos de juego'), findsOneWidget);
     expect(find.text('Desbloquear más'), findsOneWidget);
     expect(find.text('Baraja española'), findsNothing);
+  });
+
+  testWidgets('modos de juego enseña el catálogo y aún no hace nada',
+      (tester) async {
+    await tester.pumpWidget(const CarreraCaballosApp());
+
+    await tester.tap(find.text('Modos de juego'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 contra 1'), findsOneWidget);
+    expect(find.text('Torneo personalizado'), findsOneWidget);
+    expect(find.text('Partida personalizada'), findsOneWidget);
+
+    await tester.tap(find.text('1 contra 1'));
+    await tester.pump();
+    expect(find.text('1 contra 1: próximamente'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Volver'));
+    await tester.pumpAndSettle();
+    expect(find.text('Partida rápida'), findsOneWidget);
   });
 
   testWidgets('"Desbloquear más" todavía no lleva a ninguna parte',
@@ -150,9 +172,11 @@ void main() {
     expect(girado.quarterTurns, 0);
   });
 
-  testWidgets('el cartel de victoria canta el palo y ofrece finalizar',
+  testWidgets(
+      'el cartel de victoria canta el palo y ofrece finalizar o revancha',
       (tester) async {
     var finalizado = false;
+    var revancha = false;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -160,6 +184,7 @@ void main() {
           body: CartelGanador(
             palo: Palo.espadas,
             onFinalizar: () => finalizado = true,
+            onRevancha: () => revancha = true,
           ),
         ),
       ),
@@ -169,7 +194,39 @@ void main() {
     expect(find.text('ESPADAS'), findsOneWidget);
     expect(find.text('GANA'), findsOneWidget);
 
+    await tester.tap(find.text('Revancha'));
+    expect(revancha, isTrue);
+    expect(finalizado, isFalse);
+
     await tester.tap(find.text('Finalizar'));
     expect(finalizado, isTrue);
+  });
+
+  testWidgets('la revancha vuelve a la pantalla de comenzar sin salir de la mesa',
+      (tester) async {
+    await tester.pumpWidget(const CarreraCaballosApp());
+
+    await tester.tap(find.text('Partida rápida'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Comenzar'));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // Se juega hasta que gane alguien: con 6 pasos, muchos turnos bastan.
+    for (var i = 0; i < 200 && find.text('GANA').evaluate().isEmpty; i++) {
+      await tester.tap(find.bySemanticsLabel('Sacar carta del mazo').first);
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+    expect(find.text('GANA'), findsOneWidget);
+    // Se deja terminar la animación de entrada del cartel antes de tocar
+    // sus botones, o el toque puede caer mientras el cartel aún crece.
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Revancha'));
+    await tester.pumpAndSettle();
+
+    // De vuelta al velo de salida, en la misma pantalla de juego.
+    expect(find.text('GANA'), findsNothing);
+    expect(find.text('Elige tu caballo ganador'), findsOneWidget);
+    expect(find.text('Comenzar'), findsOneWidget);
   });
 }

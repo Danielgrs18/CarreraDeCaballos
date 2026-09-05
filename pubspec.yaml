@@ -15,6 +15,20 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.3
 
 flutter:
   uses-material-design: true
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  web:
+    generate: true
+    background_color: "#0E5A38"
+    theme_color: "#0E5A38"
+  image_path: "assets/icon/maestro.png"
+  adaptive_icon_background: "assets/icon/fondo.png"
+  adaptive_icon_foreground: "assets/icon/frente.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true

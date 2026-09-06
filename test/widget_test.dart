@@ -176,6 +176,95 @@ void main() {
     }
   });
 
+  testWidgets(
+      'salir antes de comenzar no pide confirmación: no hay nada que perder',
+      (tester) async {
+    await tester.pumpWidget(const CarreraCaballosApp());
+
+    await tester.tap(find.text('Partida rápida'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Salir de la partida'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('¿Salir de la carrera?'), findsNothing);
+    expect(find.text('Partida rápida'), findsOneWidget);
+  });
+
+  testWidgets(
+      'salir en plena carrera pide confirmar, y "seguir jugando" no sale',
+      (tester) async {
+    await tester.pumpWidget(const CarreraCaballosApp());
+
+    await tester.tap(find.text('Partida rápida'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Comenzar'));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // Con la carrera en marcha el mazo late en bucle (invita a tocarlo en
+    // modo manual), así que no hay estado de reposo al que pumpAndSettle
+    // pueda asentarse: se avanza el reloj a mano también aquí.
+    await tester.tap(find.byTooltip('Salir de la partida'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('¿Salir de la carrera?'), findsOneWidget);
+
+    await tester.tap(find.text('Seguir jugando'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Sigue en la mesa, con la carrera intacta (ya no está "Comenzar").
+    expect(find.text('¿Salir de la carrera?'), findsNothing);
+    expect(find.text('Comenzar'), findsNothing);
+    expect(find.byType(GameScreen), findsOneWidget);
+  });
+
+  testWidgets('confirmar la salida en plena carrera sí que sale',
+      (tester) async {
+    await tester.pumpWidget(const CarreraCaballosApp());
+
+    await tester.tap(find.text('Partida rápida'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Comenzar'));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    await tester.tap(find.byTooltip('Salir de la partida'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('Salir'));
+    // El mazo late en bucle hasta el mismísimo instante en que GameScreen
+    // se desmonta del todo (a media transición de cierre, sigue latiendo):
+    // pumpAndSettle no puede asentarse mientras tanto. Se avanza el reloj
+    // a mano: primero el cierre del diálogo, luego el pop de la propia
+    // pantalla de juego (son dos transiciones seguidas, no una).
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.byType(GameScreen), findsNothing);
+    expect(find.text('Partida rápida'), findsOneWidget);
+  });
+
+  testWidgets(
+      'el botón de retroceso del sistema también pide confirmar en carrera',
+      (tester) async {
+    await tester.pumpWidget(const CarreraCaballosApp());
+
+    await tester.tap(find.text('Partida rápida'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Comenzar'));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // Simula el gesto/botón de atrás del sistema, no un toque en la app.
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('¿Salir de la carrera?'), findsOneWidget);
+    expect(find.byType(GameScreen), findsOneWidget);
+  });
+
   testWidgets('al comenzar en manual se destapa carta tocando el mazo',
       (tester) async {
     await tester.pumpWidget(const CarreraCaballosApp());

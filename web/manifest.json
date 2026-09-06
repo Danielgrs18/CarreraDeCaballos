@@ -1,11 +1,11 @@
 {
-    "name": "carrera_caballos",
-    "short_name": "carrera_caballos",
+    "name": "Carrera de Caballos",
+    "short_name": "Carrera de Caballos",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0E5A38",
     "theme_color": "#0E5A38",
-    "description": "A new Flutter project.",
+    "description": "Carrera de caballos con baraja española: partida rápida y 1 contra 1, para jugar en el navegador.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

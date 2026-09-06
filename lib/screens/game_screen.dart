@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../game/ajustes_partida.dart';
 import '../game/logica_juego.dart';
@@ -71,6 +72,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   void dispose() {
     _reloj?.cancel();
     WidgetsBinding.instance.removeObserver(this);
+    WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     // Todos los menús de la app son verticales, vengas de donde vengas
     // (menú principal o catálogo de modos): se deja siempre así al salir.
@@ -96,6 +98,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   void _comenzar() {
     setState(() => _fase = _Fase.corriendo);
     _sincronizarReloj();
+    // En modo automático es fácil dejar el móvil apoyado sin tocarlo: que
+    // la pantalla no se apague sola a media carrera.
+    WakelockPlus.enable();
   }
 
   void _sacarCarta() {
@@ -110,7 +115,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (resultado.ganador != null) _fase = _Fase.terminado;
     });
 
-    if (resultado.ganador != null) _pararReloj();
+    if (resultado.ganador != null) {
+      _pararReloj();
+      WakelockPlus.disable();
+    }
   }
 
   void _sacarCartaAMano() {
@@ -129,12 +137,59 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     return null;
   }
 
-  void _finalizar() => Navigator.of(context).maybePop();
+  /// Sale de la mesa. En plena carrera pide confirmación primero —tanto si
+  /// se pulsa la flecha de la app como el gesto o botón de atrás del
+  /// sistema, que se interceptan igual en el `PopScope` del build.
+  Future<void> _finalizar() async {
+    if (_fase == _Fase.corriendo) {
+      final salir = await _confirmarSalida();
+      if (salir != true || !mounted) return;
+      // El PopScope de abajo tiene canPop:false mientras _fase siga siendo
+      // "corriendo" (todavía no ha cambiado, aunque el usuario ya haya
+      // confirmado), y eso bloquea también a maybePop, no solo al gesto
+      // del sistema: hay que forzar el pop en vez de pedirlo educadamente.
+      Navigator.of(context).pop();
+      return;
+    }
+    Navigator.of(context).maybePop();
+  }
+
+  Future<bool?> _confirmarSalida() {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.tapeteOscuro,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppColors.oro, width: 1.4),
+        ),
+        title: Text(
+          '¿Salir de la carrera?',
+          style: AppTheme.tituloDisplay.copyWith(fontSize: 18),
+        ),
+        content: Text(
+          'Se perderá el progreso de esta partida.',
+          style: TextStyle(color: AppColors.oroClaro.withValues(alpha: 0.85)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Seguir jugando'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Salir'),
+          ),
+        ],
+      ),
+    );
+  }
 
   /// Vuelve a la pantalla de "Comenzar" con una pista nueva, sin salir de
   /// la mesa. El modo y la velocidad elegidos se mantienen.
   void _revancha() {
     _pararReloj();
+    WakelockPlus.disable();
     setState(() {
       _logica = _nuevaPartida();
       _fase = _Fase.preparado;
@@ -192,22 +247,32 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Tapete(
-        child: SafeArea(
-          // Si el móvil no llega a girar —rotación bloqueada, o un sistema
-          // que ignora la petición— el tablero se gira por su cuenta antes
-          // que salir aplastado en vertical.
-          child: LayoutBuilder(
-            builder: (context, restricciones) {
-              final enVertical =
-                  restricciones.maxHeight > restricciones.maxWidth;
+    return PopScope(
+      // Fuera de carrera no hay nada que perder: se sale sin preguntar.
+      // En carrera, se bloquea el pop automático y se pasa por el mismo
+      // diálogo de confirmación que usa la flecha de la barra superior.
+      canPop: _fase != _Fase.corriendo,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _finalizar();
+      },
+      child: Scaffold(
+        body: Tapete(
+          child: SafeArea(
+            // Si el móvil no llega a girar —rotación bloqueada, o un
+            // sistema que ignora la petición— el tablero se gira por su
+            // cuenta antes que salir aplastado en vertical.
+            child: LayoutBuilder(
+              builder: (context, restricciones) {
+                final enVertical =
+                    restricciones.maxHeight > restricciones.maxWidth;
 
-              return RotatedBox(
-                quarterTurns: enVertical ? 1 : 0,
-                child: _tablero(),
-              );
-            },
+                return RotatedBox(
+                  quarterTurns: enVertical ? 1 : 0,
+                  child: _tablero(),
+                );
+              },
+            ),
           ),
         ),
       ),

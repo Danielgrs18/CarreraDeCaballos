@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- El verde del tapete, para que la pantalla de arranque no dé un
+         golpe de blanco (o negro, en modo oscuro) antes de que cargue la
+         app: mismo tono que AppColors.tapete en Dart. -->
+    <color name="launch_background">#FF0E5A38</color>
+</resources>

@@ -5,11 +5,13 @@ import 'package:flutter/services.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../game/ajustes_partida.dart';
+import '../game/campeonato.dart';
 import '../game/logica_juego.dart';
 import '../models/carta.dart';
 import '../models/jugador.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ajustes_personalizada.dart';
+import '../widgets/cartel_clasificacion.dart';
 import '../widgets/cartel_ganador.dart';
 import '../widgets/carta_espanola.dart';
 import '../widgets/controles_juego.dart';
@@ -43,11 +45,21 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   var _jugador1 = Palo.oros;
   var _jugador2 = Palo.copas;
 
-  // Solo se usan en la partida personalizada.
+  // Se usan en la partida personalizada y en el campeonato.
   var _pasos = LongitudPista.porDefecto;
   List<Jugador> _jugadores = const [
     Jugador(nombre: 'Jugador 1', palo: Palo.oros),
   ];
+
+  // Solo en el campeonato: cuántas carreras se corren y el marcador que
+  // las va sumando. Fuera de esa modalidad el marcador se queda en null.
+  var _rondas = NumeroRondas.porDefecto;
+  Campeonato? _campeonato;
+
+  /// La carrera no se detiene con el primer puesto, sino que sigue hasta
+  /// repartirlos todos. El campeonato lo necesita para puntuar; en los
+  /// demás modos lo activa el botón del cartel de victoria.
+  var _hastaElFinal = false;
 
   Timer? _reloj;
   int _turno = 0;
@@ -69,7 +81,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         ModalidadPartida.rapida => LogicaJuego(),
         ModalidadPartida.unoContraUno =>
           LogicaJuego(palos: [_jugador1, _jugador2]),
-        ModalidadPartida.personalizada => LogicaJuego(pasos: _pasos),
+        ModalidadPartida.personalizada ||
+        ModalidadPartida.campeonato =>
+          LogicaJuego(pasos: _pasos),
       };
 
   @override
@@ -117,7 +131,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   // --- Partida -----------------------------------------------------------
 
   void _comenzar() {
-    setState(() => _fase = _Fase.corriendo);
+    setState(() {
+      _fase = _Fase.corriendo;
+      _hastaElFinal = widget.modalidad.correHastaElFinal;
+      if (widget.modalidad == ModalidadPartida.campeonato) {
+        _campeonato = Campeonato(rondas: _rondas, jugadores: _jugadores);
+      }
+    });
     _sincronizarReloj();
     // En modo automático es fácil dejar el móvil apoyado sin tocarlo: que
     // la pantalla no se apague sola a media carrera.
@@ -125,21 +145,48 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _sacarCarta() {
-    if (_fase != _Fase.corriendo || _logica.terminada) return;
+    if (_fase != _Fase.corriendo || _logica.agotada) return;
 
     final resultado = _logica.jugarTurno();
+    // Normalmente la carrera se cierra con el primer puesto. Si se ha
+    // pedido verla entera, sigue hasta que no quede nadie que pueda
+    // avanzar: o han llegado todos, o a los que faltan no les quedan
+    // cartas con las que moverse.
+    final parar =
+        resultado.agotada || (resultado.ganador != null && !_hastaElFinal);
 
     setState(() {
       _turno++;
       _destacado = resultado.avanza;
       _aviso = _redactarAviso(resultado);
-      if (resultado.ganador != null) _fase = _Fase.terminado;
+      if (parar) _cerrarCarrera();
     });
 
-    if (resultado.ganador != null) {
+    if (parar) {
       _pararReloj();
       _mantenerPantallaEncendida(false);
     }
+  }
+
+  /// Da la carrera por terminada. En el campeonato apunta de paso los
+  /// puntos de la ronda. Se llama desde dentro de un `setState`.
+  void _cerrarCarrera() {
+    _fase = _Fase.terminado;
+    final campeonato = _campeonato;
+    if (campeonato != null && !campeonato.terminado) {
+      campeonato.anotar(_logica);
+    }
+  }
+
+  /// Reanuda la carrera ya decidida para repartir los puestos que faltan.
+  void _continuar() {
+    setState(() {
+      _hastaElFinal = true;
+      _fase = _Fase.corriendo;
+      _aviso = null;
+    });
+    _sincronizarReloj();
+    _mantenerPantallaEncendida(true);
   }
 
   void _sacarCartaAMano() {
@@ -217,7 +264,27 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _turno = 0;
       _destacado = null;
       _aviso = null;
+      _hastaElFinal = false;
+      // Volver al velo de salida es empezar de cero: el campeonato
+      // anterior queda cerrado y se monta otro al dar la salida.
+      _campeonato = null;
     });
+  }
+
+  /// Tiende una pista nueva y da la salida sin pasar por el velo: entre
+  /// rondas de un campeonato no hay nada que volver a configurar.
+  void _siguienteRonda() {
+    _pararReloj();
+    setState(() {
+      _logica = _nuevaPartida();
+      _fase = _Fase.corriendo;
+      _turno = 0;
+      _destacado = null;
+      _aviso = null;
+      _hastaElFinal = true;
+    });
+    _sincronizarReloj();
+    _mantenerPantallaEncendida(true);
   }
 
   // --- Elección de jugadores (1 contra 1) ---------------------------------
@@ -250,16 +317,21 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     });
   }
 
+  void _cambiarRondas(int rondas) {
+    if (rondas == _rondas) return;
+    setState(() => _rondas = rondas);
+  }
+
   /// Sin `setState` a propósito: la lista solo se lee al cantar el ganador,
   /// que ya llega con su propio repintado. Así escribir un nombre no
   /// reconstruye el tablero entero con cada tecla.
   void _cambiarJugadores(List<Jugador> jugadores) => _jugadores = jugadores;
 
-  /// Quiénes iban al palo que ha ganado. Solo la partida personalizada
-  /// tiene jugadores con nombre: en las otras modalidades gana el palo a
-  /// secas, sin nadie a quien atribuírselo.
-  List<String> _ganadoresDe(Palo palo) {
-    if (widget.modalidad != ModalidadPartida.personalizada) return const [];
+  /// Quiénes iban a un palo. Solo la personalizada y el campeonato tienen
+  /// jugadores con nombre: en las otras modalidades gana el palo a secas,
+  /// sin nadie a quien atribuírselo.
+  List<String> _jugadoresDe(Palo palo) {
+    if (!widget.modalidad.tieneJugadores) return const [];
     return [
       for (final jugador in _jugadores)
         if (jugador.palo == palo) jugador.nombre,
@@ -327,7 +399,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Widget _tablero() {
-    final ganador = _logica.ganador;
+    final cartel = _cartelFinal();
 
     return Stack(
       children: [
@@ -342,6 +414,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               onVelocidad: _cambiarVelocidad,
               onSalir: _finalizar,
               mostrarSelectorModo: _fase != _Fase.preparado,
+              rotulo: _rotuloRonda,
             ),
             // El velo de salida tapa solo la mesa: así se puede elegir
             // modo y velocidad antes de dar la salida.
@@ -355,17 +428,134 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             ),
           ],
         ),
-        if (_fase == _Fase.terminado && ganador != null)
-          Positioned.fill(
-            child: CartelGanador(
-              palo: ganador,
-              onFinalizar: _finalizar,
-              onRevancha: _revancha,
-              ganadores: _ganadoresDe(ganador),
-            ),
-          ),
+        if (cartel != null) Positioned.fill(child: cartel),
       ],
     );
+  }
+
+  /// La ronda que se corre, para la barra superior del campeonato.
+  String? get _rotuloRonda {
+    final campeonato = _campeonato;
+    if (campeonato == null) return null;
+    return 'Ronda ${campeonato.rondaActual} de ${campeonato.rondas}';
+  }
+
+  /// Lo que se echa encima de la mesa al acabar la carrera: el palo
+  /// ganador, la clasificación completa o el marcador del campeonato,
+  /// según lo que se haya jugado.
+  Widget? _cartelFinal() {
+    if (_fase != _Fase.terminado) return null;
+
+    final campeonato = _campeonato;
+    if (campeonato != null) return _cartelDeRonda(campeonato);
+
+    final ganador = _logica.ganador;
+    if (ganador == null) return null;
+
+    if (!_hastaElFinal) {
+      return CartelGanador(
+        palo: ganador,
+        onFinalizar: _finalizar,
+        onRevancha: _revancha,
+        // Si ya no queda nadie que pueda avanzar no hay nada que seguir:
+        // el botón sobra y el cartel se queda con la revancha.
+        onContinuar: _logica.agotada ? null : _continuar,
+        ganadores: _jugadoresDe(ganador),
+      );
+    }
+
+    return CartelClasificacion(
+      titulo: 'Clasificación',
+      subtitulo: 'Gana ${ganador.nombre}',
+      puestos: _puestosDeLaCarrera(),
+      acciones: [
+        ElevatedButton(
+          onPressed: _revancha,
+          child: const Text('Revancha'),
+        ),
+        OutlinedButton(
+          onPressed: _finalizar,
+          child: const Text('Finalizar'),
+        ),
+      ],
+    );
+  }
+
+  /// El orden de llegada de la carrera: primero los que cruzaron, en el
+  /// orden en que lo hicieron, y al final los que se quedaron sin cartas.
+  List<PuestoClasificacion> _puestosDeLaCarrera() => [
+        for (final palo in _logica.clasificacion)
+          PuestoClasificacion(palo: palo, nombres: _jugadoresDe(palo)),
+        for (final palo in _logica.descolgados)
+          PuestoClasificacion(
+            palo: palo,
+            nombres: _jugadoresDe(palo),
+            llegado: false,
+          ),
+      ];
+
+  /// El marcador del campeonato tras la ronda recién corrida.
+  Widget _cartelDeRonda(Campeonato campeonato) {
+    final ronda = campeonato.ultimaRonda;
+    final total = campeonato.puntosPorPalo;
+    final palos = _logica.caballos.keys.toList()
+      ..sort((a, b) => (total[b] ?? 0).compareTo(total[a] ?? 0));
+
+    final puestos = [
+      for (final palo in palos)
+        PuestoClasificacion(
+          palo: palo,
+          nombres: _jugadoresDe(palo),
+          puntos: total[palo] ?? 0,
+          // Lo apagado de la fila mide el campeonato, no la última
+          // carrera: lo de esta ronda se cuenta aquí al lado.
+          detalle: _logica.haLlegado(palo)
+              ? '+${ronda[palo] ?? 0}'
+              : 'no llegó',
+        ),
+    ];
+
+    if (!campeonato.terminado) {
+      return CartelClasificacion(
+        titulo: 'Ronda ${campeonato.rondasCorridas} de ${campeonato.rondas}',
+        subtitulo: 'Marcador del campeonato',
+        puestos: puestos,
+        acciones: [
+          ElevatedButton.icon(
+            onPressed: _siguienteRonda,
+            icon: const Icon(Icons.play_arrow_rounded, size: 20),
+            label: const Text('Siguiente ronda'),
+          ),
+          OutlinedButton(
+            onPressed: _finalizar,
+            child: const Text('Finalizar'),
+          ),
+        ],
+      );
+    }
+
+    return CartelClasificacion(
+      titulo: 'Campeonato',
+      subtitulo: _cantarCampeones(campeonato),
+      puestos: puestos,
+      acciones: [
+        ElevatedButton(
+          onPressed: _revancha,
+          child: const Text('Otro campeonato'),
+        ),
+        OutlinedButton(
+          onPressed: _finalizar,
+          child: const Text('Finalizar'),
+        ),
+      ],
+    );
+  }
+
+  String _cantarCampeones(Campeonato campeonato) {
+    final campeones = campeonato.campeones;
+    if (campeones.isEmpty) return 'Fin del campeonato';
+    final nombres = campeones.map((j) => j.nombre).join(', ');
+    return campeones.length == 1 ? 'Gana $nombres' : 'Empate: $nombres';
   }
 
   Widget _mesa() {
@@ -508,7 +698,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 // La personalizada trae bastantes ajustes: en horizontal
                 // sobra ancho, así que van al lado de la salida en vez de
                 // empujarla fuera de pantalla.
-                if (widget.modalidad == ModalidadPartida.personalizada)
+                if (widget.modalidad.tieneJugadores)
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -518,6 +708,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                         onPasos: _cambiarPasos,
                         jugadoresIniciales: _jugadores,
                         onJugadores: _cambiarJugadores,
+                        rondas: widget.modalidad == ModalidadPartida.campeonato
+                            ? _rondas
+                            : null,
+                        onRondas:
+                            widget.modalidad == ModalidadPartida.campeonato
+                                ? _cambiarRondas
+                                : null,
                       ),
                       const SizedBox(width: 26),
                       _accionesSalida(),

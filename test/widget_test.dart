@@ -36,7 +36,7 @@ void main() {
   });
 
   testWidgets(
-      'modos de juego enseña el catálogo; el torneo aún no está listo',
+      'modos de juego enseña el catálogo, y los tres ya se juegan',
       (tester) async {
     await tester.pumpWidget(const CarreraCaballosApp());
 
@@ -44,13 +44,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('1 contra 1'), findsOneWidget);
-    expect(find.text('Torneo personalizado'), findsOneWidget);
+    expect(find.text('Campeonato'), findsOneWidget);
     expect(find.text('Partida personalizada'), findsOneWidget);
 
-    // El torneo es el único que todavía solo avisa.
-    await tester.tap(find.text('Torneo personalizado'));
-    await tester.pump();
-    expect(find.text('Torneo personalizado: próximamente'), findsOneWidget);
+    // Ya no queda ninguno pendiente de estrenar.
+    expect(find.text('Pronto'), findsNothing);
 
     await tester.tap(find.byTooltip('Volver'));
     await tester.pumpAndSettle();
@@ -545,4 +543,174 @@ void main() {
     expect(find.text('Elige tu caballo ganador'), findsOneWidget);
     expect(find.text('Comenzar'), findsOneWidget);
   });
+
+  group('Seguir hasta que lleguen todos', () {
+    testWidgets('el cartel ofrece seguir, y al hacerlo reparte los puestos',
+        (tester) async {
+      await tester.pumpWidget(const CarreraCaballosApp());
+      await tester.tap(find.text('Partida rápida'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Comenzar'));
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await _destaparHasta(tester, 'GANA');
+
+      // La carrera está decidida, pero aún puede seguir.
+      expect(find.text('Seguir hasta que lleguen todos'), findsOneWidget);
+      await tester.tap(find.text('Seguir hasta que lleguen todos'));
+      // Nada de pumpAndSettle: al reanudar, el latido del mazo vuelve a
+      // animarse sin fin y no habría fotograma en reposo que esperar.
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // Se retira el cartel y se vuelve a poder destapar cartas.
+      expect(find.text('GANA'), findsNothing);
+
+      await _destaparHasta(tester, 'CLASIFICACIÓN');
+
+      // Los cuatro palos aparecen con su puesto y el primero, cantado.
+      for (final palo in Palo.values) {
+        expect(find.text(palo.nombre), findsOneWidget);
+      }
+      expect(find.text('1º'), findsOneWidget);
+      expect(find.text('Revancha'), findsOneWidget);
+      expect(find.text('Finalizar'), findsOneWidget);
+      // Ya no hay nada que seguir.
+      expect(find.text('Seguir hasta que lleguen todos'), findsNothing);
+    });
+
+    testWidgets('sin nadie a quien esperar, el cartel no ofrece seguir',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CartelGanador(
+              palo: Palo.bastos,
+              onFinalizar: () {},
+              onRevancha: () {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('BASTOS'), findsOneWidget);
+      expect(find.text('Seguir hasta que lleguen todos'), findsNothing);
+      expect(find.text('Revancha'), findsOneWidget);
+    });
+
+    testWidgets('la clasificación se puede repetir con la revancha',
+        (tester) async {
+      await tester.pumpWidget(const CarreraCaballosApp());
+      await tester.tap(find.text('Partida rápida'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Comenzar'));
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await _destaparHasta(tester, 'GANA');
+      await tester.tap(find.text('Seguir hasta que lleguen todos'));
+      // Nada de pumpAndSettle: al reanudar, el latido del mazo vuelve a
+      // animarse sin fin y no habría fotograma en reposo que esperar.
+      await tester.pump(const Duration(milliseconds: 400));
+      await _destaparHasta(tester, 'CLASIFICACIÓN');
+
+      await tester.tap(find.text('Revancha'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('CLASIFICACIÓN'), findsNothing);
+      expect(find.text('Comenzar'), findsOneWidget);
+    });
+  });
+
+  group('Campeonato', () {
+    /// Entra al modo desde el catálogo y deja la pantalla en el velo.
+    Future<void> abrir(WidgetTester tester) async {
+      await tester.pumpWidget(const CarreraCaballosApp());
+      await tester.tap(find.text('Modos de juego'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Campeonato'));
+      await tester.pumpAndSettle();
+    }
+
+    /// Deja el velo con el campeonato más corto posible: dos rondas y la
+    /// pista mínima, para que la partida quepa en un test.
+    Future<void> ajustarCorto(WidgetTester tester) async {
+      await tester.drag(find.byType(Slider).at(0), const Offset(-500, 0));
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(Slider).at(1), const Offset(-500, 0));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('el velo añade las rondas a los ajustes de la personalizada',
+        (tester) async {
+      await abrir(tester);
+
+      expect(find.text('RONDAS DEL CAMPEONATO'), findsOneWidget);
+      expect(find.text('LONGITUD DE LA PISTA'), findsOneWidget);
+      expect(find.text('JUGADORES'), findsOneWidget);
+      expect(find.byType(Slider), findsNWidgets(2));
+
+      await ajustarCorto(tester);
+      expect(find.text('2 rondas'), findsOneWidget);
+      expect(_pasos(tester), LongitudPista.minimo);
+      // Corren los cuatro caballos, como en la personalizada.
+      expect(_carriles(tester), 4);
+    });
+
+    testWidgets('corre las rondas, puntúa y corona al campeón',
+        (tester) async {
+      await abrir(tester);
+      await ajustarCorto(tester);
+
+      await tester.enterText(find.byType(TextField).at(0), 'Ana');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Comenzar'));
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // La barra superior canta por qué ronda va.
+      expect(find.text('Ronda 1 de 2'), findsOneWidget);
+
+      await _destaparHasta(tester, 'RONDA 1 DE 2');
+      expect(find.text('Marcador del campeonato'), findsOneWidget);
+      // Los cuatro palos con su marcador, y ni rastro de la revancha.
+      expect(find.textContaining(' pts'), findsNWidgets(4));
+      expect(find.text('Revancha'), findsNothing);
+
+      await tester.tap(find.text('Siguiente ronda'));
+      // La ronda arranca al momento, con el mazo latiendo otra vez: hay
+      // que avanzar a mano en vez de esperar a un reposo que no llega.
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // Arranca sola: entre rondas no se vuelve a pasar por el velo.
+      expect(find.text('Comenzar'), findsNothing);
+      expect(find.text('Ronda 2 de 2'), findsOneWidget);
+
+      await _destaparHasta(tester, 'CAMPEONATO');
+
+      // Ana es la única jugadora: gane el palo que gane, el campeonato
+      // se lo lleva ella.
+      expect(find.text('Gana Ana'), findsOneWidget);
+      expect(find.text('Siguiente ronda'), findsNothing);
+
+      await tester.tap(find.text('Otro campeonato'));
+      await tester.pumpAndSettle();
+      expect(find.text('CAMPEONATO'), findsNothing);
+      expect(find.text('Comenzar'), findsOneWidget);
+    });
+  });
+}
+
+/// Destapa cartas a mano hasta que salga el cartel con [rotulo]. Se pulsa
+/// el mazo en vez de dejar correr el automático porque su temporizador no
+/// para nunca y `pumpAndSettle` no llegaría a devolver el control.
+Future<void> _destaparHasta(WidgetTester tester, String rotulo) async {
+  final cartel = find.text(rotulo);
+  for (var i = 0; i < 600 && cartel.evaluate().isEmpty; i++) {
+    await tester.tap(find.bySemanticsLabel('Sacar carta del mazo').first);
+    await tester.pump(const Duration(milliseconds: 400));
+  }
+  // Se deja acabar la animación de entrada antes de tocar sus botones, o
+  // el toque cae mientras el cartel todavía está creciendo.
+  await tester.pumpAndSettle();
+  expect(cartel, findsOneWidget, reason: 'nunca salió el cartel "$rotulo"');
 }

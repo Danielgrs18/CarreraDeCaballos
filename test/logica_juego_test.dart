@@ -120,12 +120,14 @@ void main() {
         expect(juego.terminada, isTrue, reason: 'la carrera no terminó');
         expect(ultimo!.ganador, isNotNull);
         expect(ultimo.ganador, ultimo.carta.palo);
+        expect(ultimo.llegada, ultimo.ganador);
         expect(
           juego.caballos.values.where((c) => c.haLlegado(juego.meta)).length,
           1,
         );
-        // El turno que gana no levanta ninguna carta más.
-        expect(ultimo.revelaciones, isEmpty);
+        // El primer puesto queda cerrado, aunque la carrera pueda seguir
+        // para repartir los demás.
+        expect(juego.clasificacion, [ultimo.ganador]);
       }
     });
 
@@ -212,6 +214,111 @@ void main() {
         () => LogicaJuego(palos: [Palo.oros, Palo.oros, Palo.copas]),
         throwsA(isA<AssertionError>()),
       );
+    });
+  });
+
+  group('Seguir hasta que lleguen todos', () {
+    test('la carrera continúa tras el ganador y ordena a los cuatro', () {
+      for (var semilla = 0; semilla < 25; semilla++) {
+        final juego = LogicaJuego(pasos: 6, random: Random(semilla));
+
+        var turnos = 0;
+        while (!juego.agotada && turnos++ < _maxTurnos) {
+          juego.jugarTurno();
+        }
+
+        expect(juego.agotada, isTrue, reason: 'la carrera no se agotó');
+        // Con 6 pasos siempre queda alguna carta viva de cada palo, así
+        // que llegan los cuatro y la clasificación queda completa.
+        expect(juego.clasificacion, hasLength(4));
+        expect(juego.clasificacion.toSet(), Palo.values.toSet());
+        expect(juego.descolgados, isEmpty);
+      }
+    });
+
+    test('el ganador sigue siendo el primero que cruzó', () {
+      final juego = LogicaJuego(pasos: 6, random: Random(4));
+
+      Palo? primero;
+      while (!juego.agotada) {
+        final resultado = juego.jugarTurno();
+        primero ??= resultado.ganador;
+      }
+
+      expect(primero, isNotNull);
+      expect(juego.ganador, primero);
+      expect(juego.clasificacion.first, primero);
+    });
+
+    test('a quien ya ha llegado no le afectan ni cartas ni trampas', () {
+      for (var semilla = 0; semilla < 25; semilla++) {
+        final juego = LogicaJuego(pasos: 6, random: Random(semilla));
+
+        while (!juego.agotada) {
+          juego.jugarTurno();
+          // Nadie puede pasarse de meta ni volver atrás una vez dentro.
+          for (final palo in juego.clasificacion) {
+            expect(juego.caballos[palo]!.posicion, juego.meta);
+          }
+        }
+      }
+    });
+
+    test('un caballo sin cartas vivas no puede avanzar y corta la carrera',
+        () {
+      // Con 20 pasos se tienden 20 de las 36 cartas: es fácil que las 9 de
+      // algún palo acaben todas en la pista y ese caballo quede clavado.
+      var huboDescolgado = false;
+
+      for (var semilla = 0; semilla < 200 && !huboDescolgado; semilla++) {
+        final juego = LogicaJuego(pasos: 20, random: Random(semilla));
+
+        var turnos = 0;
+        while (!juego.agotada && turnos++ < _maxTurnos) {
+          juego.jugarTurno();
+        }
+
+        expect(juego.agotada, isTrue, reason: 'la carrera no se agotó');
+
+        if (juego.descolgados.isNotEmpty) {
+          huboDescolgado = true;
+          for (final palo in juego.descolgados) {
+            // Ni una sola de sus cartas sigue en circulación.
+            expect(juego.puedeAvanzar(palo), isFalse);
+            expect(juego.haLlegado(palo), isFalse);
+          }
+          // Y aun así la carrera terminó con su ganador.
+          expect(juego.ganador, isNotNull);
+        }
+      }
+
+      expect(
+        huboDescolgado,
+        isTrue,
+        reason: 'no se dio el caso del caballo sin cartas en 200 semillas',
+      );
+    });
+
+    test('con las 9 cartas de un palo en la pista, ese palo nunca avanza',
+        () {
+      // Caso construido a mano: se busca una semilla donde oros quede sin
+      // ninguna carta viva desde el reparto inicial.
+      LogicaJuego? clavado;
+      for (var semilla = 0; semilla < 500 && clavado == null; semilla++) {
+        final juego = LogicaJuego(pasos: 12, random: Random(semilla));
+        if (!juego.puedeAvanzar(Palo.oros)) clavado = juego;
+      }
+
+      if (clavado == null) return; // no salió el caso; nada que comprobar
+
+      final posicionInicial = clavado.caballos[Palo.oros]!.posicion;
+      var turnos = 0;
+      while (!clavado.agotada && turnos++ < _maxTurnos) {
+        clavado.jugarTurno();
+      }
+
+      expect(clavado.caballos[Palo.oros]!.posicion, posicionInicial);
+      expect(clavado.descolgados, contains(Palo.oros));
     });
   });
 }

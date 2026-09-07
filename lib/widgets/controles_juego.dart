@@ -18,6 +18,10 @@ class ControlesJuego extends StatelessWidget {
   /// aquí solo se repetiría, así que la barra lo esconde hasta que arranca.
   final bool mostrarSelectorModo;
 
+  /// Nota corta junto a la flecha de salir, como la ronda que se corre en
+  /// el campeonato. Los modos de una sola carrera no la necesitan.
+  final String? rotulo;
+
   const ControlesJuego({
     super.key,
     required this.modo,
@@ -28,6 +32,7 @@ class ControlesJuego extends StatelessWidget {
     required this.onVelocidad,
     required this.onSalir,
     this.mostrarSelectorModo = true,
+    this.rotulo,
   });
 
   @override
@@ -50,6 +55,17 @@ class ControlesJuego extends StatelessWidget {
             tooltip: 'Salir de la partida',
             visualDensity: VisualDensity.compact,
           ),
+          if (rotulo != null)
+            Text(
+              rotulo!,
+              style: TextStyle(
+                fontFamily: AppTheme.familiaTitulo,
+                fontSize: 12.5,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.1,
+                color: AppColors.oroClaro.withValues(alpha: 0.85),
+              ),
+            ),
           const Spacer(),
           if (mostrarSelectorModo)
             Flexible(

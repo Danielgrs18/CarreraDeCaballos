@@ -11,6 +11,9 @@ Widget _abrirUnoVsUno(BuildContext context) =>
 Widget _abrirPersonalizada(BuildContext context) =>
     const GameScreen(modalidad: ModalidadPartida.personalizada);
 
+Widget _abrirCampeonato(BuildContext context) =>
+    const GameScreen(modalidad: ModalidadPartida.campeonato);
+
 /// Un modo de juego que se podrá elegir desde esta pantalla. Si [pantalla]
 /// es `null`, todavía no está listo y tocarlo solo avisa "próximamente".
 class _ModoDisponible {
@@ -37,9 +40,10 @@ const _modos = <_ModoDisponible>[
     pantalla: _abrirUnoVsUno,
   ),
   _ModoDisponible(
-    titulo: 'Torneo personalizado',
-    descripcion: 'Varias carreras seguidas con marcador acumulado',
+    titulo: 'Campeonato',
+    descripcion: 'Varias carreras seguidas: puntúan todos los que llegan',
     icono: Icons.emoji_events_rounded,
+    pantalla: _abrirCampeonato,
   ),
   _ModoDisponible(
     titulo: 'Partida personalizada',

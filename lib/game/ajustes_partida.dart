@@ -9,6 +9,21 @@ enum ModalidadPartida {
 
   /// Los 4 palos, con la pista y la lista de jugadores configurables.
   personalizada,
+
+  /// Como la personalizada, pero encadenando varias carreras que reparten
+  /// puntos: gana quien más sume al cabo de todas las rondas.
+  campeonato,
+}
+
+extension ModalidadPartidaX on ModalidadPartida {
+  /// Los modos que reparten palos entre jugadores con nombre.
+  bool get tieneJugadores =>
+      this == ModalidadPartida.personalizada ||
+      this == ModalidadPartida.campeonato;
+
+  /// En el campeonato hay que ver llegar a todos para poder puntuar, así
+  /// que la carrera no se detiene con el primero.
+  bool get correHastaElFinal => this == ModalidadPartida.campeonato;
 }
 
 /// Cuánto puede medir la pista en una partida personalizada. Por debajo de

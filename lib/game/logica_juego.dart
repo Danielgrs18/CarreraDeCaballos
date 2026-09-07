@@ -21,8 +21,12 @@ class Revelacion {
 class ResultadoTurno {
   final Carta carta;
 
-  /// Palo que ha avanzado con esta carta.
-  final Palo avanza;
+  /// Palo que ha avanzado con esta carta, o `null` si su caballo ya había
+  /// cruzado la meta y la carta no ha hecho nada.
+  final Palo? avanza;
+
+  /// Palo que acaba de cruzar la meta en este turno, en el puesto que sea.
+  final Palo? llegada;
 
   /// Cartas de paso levantadas en este turno (normalmente 0 o 1).
   final List<Revelacion> revelaciones;
@@ -30,15 +34,20 @@ class ResultadoTurno {
   /// El mazo se había agotado y se ha vuelto a formar con los descartes.
   final bool mazoReciclado;
 
-  /// Palo ganador, si la carrera ha terminado en este turno.
+  /// Palo ganador, solo en el turno en que se decide el primer puesto.
   final Palo? ganador;
+
+  /// Ya no queda nadie que pueda seguir avanzando.
+  final bool agotada;
 
   const ResultadoTurno({
     required this.carta,
-    required this.avanza,
+    this.avanza,
+    this.llegada,
     this.revelaciones = const [],
     this.mazoReciclado = false,
     this.ganador,
+    this.agotada = false,
   });
 }
 
@@ -70,6 +79,7 @@ class LogicaJuego {
   List<Carta> _mazo;
   List<Carta> _descartes;
   int _pasosLevantados = 0;
+  final List<Palo> _clasificacion = [];
 
   LogicaJuego._({
     required this.pasos,
@@ -135,22 +145,51 @@ class LogicaJuego {
   /// Última carta destapada del mazo, o `null` si aún no se ha jugado.
   Carta? get ultimaCarta => _descartes.isEmpty ? null : _descartes.last;
 
-  Palo? get ganador {
-    for (final c in caballos.values) {
-      if (c.haLlegado(meta)) return c.palo;
-    }
-    return null;
-  }
+  /// Orden de llegada a meta, del primero al último. La carrera puede
+  /// seguir después de que entre el primero: los demás van entrando aquí
+  /// según cruzan.
+  List<Palo> get clasificacion => List.unmodifiable(_clasificacion);
 
+  bool haLlegado(Palo palo) => caballos[palo]!.haLlegado(meta);
+
+  /// El primero en cruzar la meta.
+  Palo? get ganador => _clasificacion.isEmpty ? null : _clasificacion.first;
+
+  /// Ya hay ganador. La carrera puede seguir para repartir los demás
+  /// puestos, pero el primero está decidido.
   bool get terminada => ganador != null;
 
-  /// El paso más avanzado que han dejado atrás los 4 caballos.
+  /// Un caballo solo puede seguir avanzando si le queda alguna de sus 9
+  /// cartas viva. Las que se tienden en la pista no vuelven al mazo ni
+  /// siquiera al levantarse, así que si las 9 de un palo acaban ahí, ese
+  /// caballo se queda clavado para siempre y no llegará nunca.
+  bool puedeAvanzar(Palo palo) =>
+      _mazo.any((c) => c.palo == palo) ||
+      _descartes.any((c) => c.palo == palo);
+
+  /// Los que aún no han llegado y todavía podrían.
+  List<Palo> get enCarrera => [
+        for (final palo in caballos.keys)
+          if (!haLlegado(palo) && puedeAvanzar(palo)) palo,
+      ];
+
+  /// Los que no llegaron ni podrán, por quedarse sin cartas.
+  List<Palo> get descolgados => [
+        for (final palo in caballos.keys)
+          if (!haLlegado(palo) && !puedeAvanzar(palo)) palo,
+      ];
+
+  /// La carrera no da más de sí: o han llegado todos, o a los que faltan
+  /// no les queda ninguna carta con la que avanzar.
+  bool get agotada => enCarrera.isEmpty;
+
+  /// El paso más avanzado que han dejado atrás todos los caballos.
   int get pasoComunSuperado =>
       caballos.values.map((c) => c.posicion).reduce(min);
 
   /// Destapa la siguiente carta y aplica sus efectos.
   ResultadoTurno jugarTurno() {
-    assert(!terminada, 'La carrera ya ha terminado');
+    assert(!agotada, 'La carrera ya no da más de sí');
 
     var reciclado = false;
     if (_mazo.isEmpty) {
@@ -161,30 +200,32 @@ class LogicaJuego {
     final carta = _mazo.removeLast();
     _descartes.add(carta);
 
-    caballos[carta.palo]!.avanzar();
-
-    // Cruzar la meta termina la carrera al instante: no se levantan más cartas.
-    final ganadorTurno = ganador;
-    if (ganadorTurno != null) {
-      return ResultadoTurno(
-        carta: carta,
-        avanza: carta.palo,
-        mazoReciclado: reciclado,
-        ganador: ganadorTurno,
-      );
+    // Al que ya ha cruzado la meta su carta no le hace nada: se queda ahí.
+    Palo? avanza;
+    Palo? llegada;
+    if (!haLlegado(carta.palo)) {
+      avanza = carta.palo;
+      caballos[carta.palo]!.avanzar();
+      if (haLlegado(carta.palo)) {
+        _clasificacion.add(carta.palo);
+        llegada = carta.palo;
+      }
     }
 
     return ResultadoTurno(
       carta: carta,
-      avanza: carta.palo,
+      avanza: avanza,
+      llegada: llegada,
+      ganador: _clasificacion.length == 1 ? llegada : null,
       revelaciones: _levantarPasosSuperados(),
       mazoReciclado: reciclado,
+      agotada: agotada,
     );
   }
 
-  /// Levanta todas las cartas de paso que los 4 caballos hayan dejado atrás.
-  /// Cada una hace retroceder a su palo, lo que puede impedir que se levante
-  /// la siguiente.
+  /// Levanta todas las cartas de paso que hayan dejado atrás todos los
+  /// caballos. Cada una hace retroceder a su palo, lo que puede impedir
+  /// que se levante la siguiente.
   List<Revelacion> _levantarPasosSuperados() {
     final reveladas = <Revelacion>[];
 
@@ -192,7 +233,11 @@ class LogicaJuego {
         pasoComunSuperado >= _pasosLevantados + 1) {
       final carta = cartasPista[_pasosLevantados];
       _pasosLevantados++;
-      caballos[carta.palo]!.retroceder();
+      // A quien ya ha cruzado la meta no se le hace retroceder: su carrera
+      // terminó y su puesto está dado.
+      if (!haLlegado(carta.palo)) {
+        caballos[carta.palo]!.retroceder();
+      }
       reveladas.add(Revelacion(paso: _pasosLevantados, carta: carta));
     }
 

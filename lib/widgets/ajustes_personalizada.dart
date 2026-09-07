@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
 
 import '../game/ajustes_partida.dart';
+import '../game/campeonato.dart';
 import '../models/carta.dart';
 import '../models/jugador.dart';
 import '../theme/app_theme.dart';
 import 'paint/palos.dart';
 
 /// Los ajustes propios de la partida personalizada, tal como se ven en el
-/// velo de salida: el largo de la pista y quién juega con cada palo.
+/// velo de salida: el largo de la pista y quién juega con cada palo. El
+/// campeonato añade encima cuántas rondas se corren.
 class AjustesPersonalizada extends StatelessWidget {
   final int pasos;
   final ValueChanged<int> onPasos;
   final List<Jugador> jugadoresIniciales;
   final ValueChanged<List<Jugador>> onJugadores;
+
+  /// Número de carreras del campeonato. En la partida personalizada, que
+  /// es de una sola carrera, va a `null` y el mando no aparece.
+  final int? rondas;
+  final ValueChanged<int>? onRondas;
 
   const AjustesPersonalizada({
     super.key,
@@ -20,6 +27,8 @@ class AjustesPersonalizada extends StatelessWidget {
     required this.onPasos,
     required this.jugadoresIniciales,
     required this.onJugadores,
+    this.rondas,
+    this.onRondas,
   });
 
   @override
@@ -30,9 +39,27 @@ class AjustesPersonalizada extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (rondas != null && onRondas != null) ...[
+            const _Rotulo('Rondas del campeonato'),
+            const SizedBox(height: 2),
+            _SelectorNumero(
+              valor: rondas!,
+              minimo: NumeroRondas.minimo,
+              maximo: NumeroRondas.maximo,
+              onCambio: onRondas!,
+              rotulo: (n) => n == 1 ? '1 ronda' : '$n rondas',
+            ),
+            const SizedBox(height: 10),
+          ],
           const _Rotulo('Longitud de la pista'),
           const SizedBox(height: 2),
-          _SelectorLongitud(pasos: pasos, onCambio: onPasos),
+          _SelectorNumero(
+            valor: pasos,
+            minimo: LongitudPista.minimo,
+            maximo: LongitudPista.maximo,
+            onCambio: onPasos,
+            rotulo: (n) => n == 1 ? '1 paso' : '$n pasos',
+          ),
           const SizedBox(height: 10),
           const _Rotulo('Jugadores'),
           const SizedBox(height: 6),
@@ -66,11 +93,21 @@ class _Rotulo extends StatelessWidget {
   }
 }
 
-class _SelectorLongitud extends StatelessWidget {
-  final int pasos;
+/// Una regleta con su cifra al lado, para elegir un número entero corto.
+class _SelectorNumero extends StatelessWidget {
+  final int valor;
+  final int minimo;
+  final int maximo;
   final ValueChanged<int> onCambio;
+  final String Function(int) rotulo;
 
-  const _SelectorLongitud({required this.pasos, required this.onCambio});
+  const _SelectorNumero({
+    required this.valor,
+    required this.minimo,
+    required this.maximo,
+    required this.onCambio,
+    required this.rotulo,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -91,20 +128,20 @@ class _SelectorLongitud extends StatelessWidget {
               ),
             ),
             child: Slider(
-              value: pasos.toDouble(),
-              min: LongitudPista.minimo.toDouble(),
-              max: LongitudPista.maximo.toDouble(),
-              divisions: LongitudPista.maximo - LongitudPista.minimo,
-              label: '$pasos',
-              onChanged: (valor) => onCambio(valor.round()),
+              value: valor.toDouble(),
+              min: minimo.toDouble(),
+              max: maximo.toDouble(),
+              divisions: maximo - minimo,
+              label: '$valor',
+              onChanged: (elegido) => onCambio(elegido.round()),
             ),
           ),
         ),
         const SizedBox(width: 6),
         SizedBox(
-          width: 62,
+          width: 66,
           child: Text(
-            pasos == 1 ? '1 paso' : '$pasos pasos',
+            rotulo(valor),
             textAlign: TextAlign.end,
             style: const TextStyle(
               fontFamily: AppTheme.familiaTitulo,

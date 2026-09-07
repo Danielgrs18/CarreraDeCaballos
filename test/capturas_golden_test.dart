@@ -9,6 +9,7 @@ import 'package:carrera_caballos/main.dart';
 import 'package:carrera_caballos/models/carta.dart';
 import 'package:carrera_caballos/theme/app_theme.dart';
 import 'package:carrera_caballos/widgets/carta_espanola.dart';
+import 'package:carrera_caballos/widgets/cartel_clasificacion.dart';
 import 'package:carrera_caballos/widgets/cartel_ganador.dart';
 import 'package:carrera_caballos/widgets/tapete.dart';
 import 'package:flutter/material.dart';
@@ -248,7 +249,12 @@ void main() {
         theme: AppTheme.tema,
         home: Scaffold(
           body: Tapete(
-            child: CartelGanador(palo: Palo.bastos, onFinalizar: () {}, onRevancha: () {}),
+            child: CartelGanador(
+              palo: Palo.bastos,
+              onFinalizar: () {},
+              onRevancha: () {},
+              onContinuar: () {},
+            ),
           ),
         ),
       ),
@@ -302,6 +308,120 @@ void main() {
     await expectLater(
       find.byType(MaterialApp),
       matchesGoldenFile('capturas/ganador_jugadores.png'),
+    );
+  });
+
+  testWidgets('clasificación al llegar todos', (tester) async {
+    await _lienzo(tester, const Size(880, 460));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.tema,
+        home: Scaffold(
+          body: Tapete(
+            child: CartelClasificacion(
+              titulo: 'Clasificación',
+              subtitulo: 'Gana Espadas',
+              puestos: const [
+                PuestoClasificacion(palo: Palo.espadas, nombres: ['Ana']),
+                PuestoClasificacion(palo: Palo.oros, nombres: ['Luis']),
+                PuestoClasificacion(palo: Palo.copas),
+                PuestoClasificacion(
+                  palo: Palo.bastos,
+                  nombres: ['Marta'],
+                  llegado: false,
+                ),
+              ],
+              acciones: [
+                ElevatedButton(onPressed: () {}, child: const Text('Revancha')),
+                OutlinedButton(
+                  onPressed: () {},
+                  child: const Text('Finalizar'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('capturas/clasificacion.png'),
+    );
+  });
+
+  testWidgets('campeonato: velo con rondas', (tester) async {
+    await _lienzo(tester, const Size(880, 500));
+
+    await tester.pumpWidget(const CarreraCaballosApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Modos de juego'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Campeonato'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Añadir jugador'));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('capturas/campeonato_velo.png'),
+    );
+  });
+
+  testWidgets('campeonato: marcador entre rondas', (tester) async {
+    await _lienzo(tester, const Size(880, 460));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.tema,
+        home: Scaffold(
+          body: Tapete(
+            child: CartelClasificacion(
+              titulo: 'Ronda 2 de 4',
+              subtitulo: 'Marcador del campeonato',
+              puestos: const [
+                PuestoClasificacion(
+                  palo: Palo.oros,
+                  nombres: ['Ana', 'Luis'],
+                  puntos: 7,
+                  detalle: '+4',
+                ),
+                PuestoClasificacion(palo: Palo.copas, puntos: 5, detalle: '+2'),
+                PuestoClasificacion(
+                  palo: Palo.espadas,
+                  nombres: ['Marta'],
+                  puntos: 4,
+                  detalle: '+3',
+                ),
+                PuestoClasificacion(
+                  palo: Palo.bastos,
+                  puntos: 4,
+                  detalle: 'no llegó',
+                ),
+              ],
+              acciones: [
+                ElevatedButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.play_arrow_rounded, size: 20),
+                  label: const Text('Siguiente ronda'),
+                ),
+                OutlinedButton(
+                  onPressed: () {},
+                  child: const Text('Finalizar'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('capturas/campeonato_ronda.png'),
     );
   });
 }

@@ -260,4 +260,48 @@ void main() {
       matchesGoldenFile('capturas/ganador.png'),
     );
   });
+
+  testWidgets('personalizada: velo con ajustes', (tester) async {
+    await _lienzo(tester, const Size(880, 460));
+
+    await tester.pumpWidget(const CarreraCaballosApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Modos de juego'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Partida personalizada'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Añadir jugador'));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('capturas/personalizada_velo.png'),
+    );
+  });
+
+  testWidgets('cartel de victoria con jugadores', (tester) async {
+    await _lienzo(tester, const Size(880, 420));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.tema,
+        home: Scaffold(
+          body: Tapete(
+            child: CartelGanador(
+              palo: Palo.espadas,
+              onFinalizar: () {},
+              onRevancha: () {},
+              ganadores: const ['Ana', 'Luis', 'Marta'],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('capturas/ganador_jugadores.png'),
+    );
+  });
 }

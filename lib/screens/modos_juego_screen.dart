@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../game/ajustes_partida.dart';
 import '../theme/app_theme.dart';
 import '../widgets/tapete.dart';
 import 'game_screen.dart';
 
 Widget _abrirUnoVsUno(BuildContext context) =>
-    const GameScreen(esUnoVsUno: true);
+    const GameScreen(modalidad: ModalidadPartida.unoContraUno);
+
+Widget _abrirPersonalizada(BuildContext context) =>
+    const GameScreen(modalidad: ModalidadPartida.personalizada);
 
 /// Un modo de juego que se podrá elegir desde esta pantalla. Si [pantalla]
 /// es `null`, todavía no está listo y tocarlo solo avisa "próximamente".
@@ -39,8 +43,9 @@ const _modos = <_ModoDisponible>[
   ),
   _ModoDisponible(
     titulo: 'Partida personalizada',
-    descripcion: 'Elige la longitud de la pista antes de empezar',
+    descripcion: 'Elige el largo de la pista y quién juega con cada palo',
     icono: Icons.tune_rounded,
+    pantalla: _abrirPersonalizada,
   ),
 ];
 

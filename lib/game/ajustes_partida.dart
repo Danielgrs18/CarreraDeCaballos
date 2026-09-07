@@ -1,3 +1,27 @@
+/// Con qué reglas de mesa se juega. La lógica de la carrera es la misma en
+/// todas: solo cambian cuántos caballos corren y de qué largo es la pista.
+enum ModalidadPartida {
+  /// Los 4 palos, pista de largo fijo.
+  rapida,
+
+  /// Solo 2 palos, elegidos por los jugadores en el velo de salida.
+  unoContraUno,
+
+  /// Los 4 palos, con la pista y la lista de jugadores configurables.
+  personalizada,
+}
+
+/// Cuánto puede medir la pista en una partida personalizada. Por debajo de
+/// 2 la carrera no da ni para una mano; por encima de 12 las casillas se
+/// estrechan tanto que las cartas de paso dejan de leerse.
+class LongitudPista {
+  const LongitudPista._();
+
+  static const minimo = 2;
+  static const maximo = 12;
+  static const porDefecto = 6;
+}
+
 /// Cómo se destapan las cartas durante la carrera.
 enum ModoJuego {
   manual('Manual'),

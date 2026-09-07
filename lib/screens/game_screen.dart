@@ -7,7 +7,9 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../game/ajustes_partida.dart';
 import '../game/logica_juego.dart';
 import '../models/carta.dart';
+import '../models/jugador.dart';
 import '../theme/app_theme.dart';
+import '../widgets/ajustes_personalizada.dart';
 import '../widgets/cartel_ganador.dart';
 import '../widgets/carta_espanola.dart';
 import '../widgets/controles_juego.dart';
@@ -20,11 +22,11 @@ enum _Fase { preparado, corriendo, terminado }
 
 /// La mesa de juego: se ve en horizontal y con la pantalla completa.
 class GameScreen extends StatefulWidget {
-  /// En Partida rápida corren los 4 palos. En el 1 contra 1 solo corren 2,
-  /// y el jugador elige cuáles en el velo de salida.
-  final bool esUnoVsUno;
+  /// Qué se puede configurar antes de dar la salida. La carrera en sí es
+  /// la misma en las tres modalidades.
+  final ModalidadPartida modalidad;
 
-  const GameScreen({super.key, this.esUnoVsUno = false});
+  const GameScreen({super.key, this.modalidad = ModalidadPartida.rapida});
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -41,15 +43,34 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   var _jugador1 = Palo.oros;
   var _jugador2 = Palo.copas;
 
+  // Solo se usan en la partida personalizada.
+  var _pasos = LongitudPista.porDefecto;
+  List<Jugador> _jugadores = const [
+    Jugador(nombre: 'Jugador 1', palo: Palo.oros),
+  ];
+
   Timer? _reloj;
   int _turno = 0;
   Palo? _destacado;
   String? _aviso;
 
-  /// Una pista nueva, con los palos que tocan según el modo.
-  LogicaJuego _nuevaPartida() => widget.esUnoVsUno
-      ? LogicaJuego(palos: [_jugador1, _jugador2])
-      : LogicaJuego();
+  /// Mantiene la pantalla encendida mientras corre la carrera. Si la
+  /// plataforma no lo soporta (o no hay plugin detrás, como en los tests)
+  /// se ignora: no poder evitar que se apague la pantalla no es motivo
+  /// para tumbar la partida.
+  void _mantenerPantallaEncendida(bool encendida) {
+    WakelockPlus.toggle(enable: encendida).catchError((_) {});
+  }
+
+  /// Una pista nueva, con los palos y el largo que toquen según la
+  /// modalidad. En la personalizada corren los 4 caballos igual que en la
+  /// partida rápida: los jugadores solo se reparten los palos.
+  LogicaJuego _nuevaPartida() => switch (widget.modalidad) {
+        ModalidadPartida.rapida => LogicaJuego(),
+        ModalidadPartida.unoContraUno =>
+          LogicaJuego(palos: [_jugador1, _jugador2]),
+        ModalidadPartida.personalizada => LogicaJuego(pasos: _pasos),
+      };
 
   @override
   void initState() {
@@ -72,7 +93,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   void dispose() {
     _reloj?.cancel();
     WidgetsBinding.instance.removeObserver(this);
-    WakelockPlus.disable();
+    _mantenerPantallaEncendida(false);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     // Todos los menús de la app son verticales, vengas de donde vengas
     // (menú principal o catálogo de modos): se deja siempre así al salir.
@@ -100,7 +121,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _sincronizarReloj();
     // En modo automático es fácil dejar el móvil apoyado sin tocarlo: que
     // la pantalla no se apague sola a media carrera.
-    WakelockPlus.enable();
+    _mantenerPantallaEncendida(true);
   }
 
   void _sacarCarta() {
@@ -117,7 +138,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
     if (resultado.ganador != null) {
       _pararReloj();
-      WakelockPlus.disable();
+      _mantenerPantallaEncendida(false);
     }
   }
 
@@ -189,7 +210,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   /// la mesa. El modo y la velocidad elegidos se mantienen.
   void _revancha() {
     _pararReloj();
-    WakelockPlus.disable();
+    _mantenerPantallaEncendida(false);
     setState(() {
       _logica = _nuevaPartida();
       _fase = _Fase.preparado;
@@ -217,6 +238,32 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _jugador2 = palo;
       _logica = _nuevaPartida();
     });
+  }
+
+  // --- Ajustes de la partida personalizada --------------------------------
+
+  void _cambiarPasos(int pasos) {
+    if (pasos == _pasos) return;
+    setState(() {
+      _pasos = pasos;
+      _logica = _nuevaPartida();
+    });
+  }
+
+  /// Sin `setState` a propósito: la lista solo se lee al cantar el ganador,
+  /// que ya llega con su propio repintado. Así escribir un nombre no
+  /// reconstruye el tablero entero con cada tecla.
+  void _cambiarJugadores(List<Jugador> jugadores) => _jugadores = jugadores;
+
+  /// Quiénes iban al palo que ha ganado. Solo la partida personalizada
+  /// tiene jugadores con nombre: en las otras modalidades gana el palo a
+  /// secas, sin nadie a quien atribuírselo.
+  List<String> _ganadoresDe(Palo palo) {
+    if (widget.modalidad != ModalidadPartida.personalizada) return const [];
+    return [
+      for (final jugador in _jugadores)
+        if (jugador.palo == palo) jugador.nombre,
+    ];
   }
 
   // --- Reloj del modo automático ------------------------------------------
@@ -314,6 +361,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               palo: ganador,
               onFinalizar: _finalizar,
               onRevancha: _revancha,
+              ganadores: _ganadoresDe(ganador),
             ),
           ),
       ],
@@ -452,45 +500,74 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   height: 1,
                   color: AppColors.oro.withValues(alpha: 0.5),
                 ),
-                if (widget.esUnoVsUno) ...[
+                if (widget.modalidad == ModalidadPartida.unoContraUno) ...[
                   const SizedBox(height: 14),
                   _selectorJugadores(),
                 ],
                 const SizedBox(height: 14),
-                ElevatedButton(
-                  onPressed: _comenzar,
-                  child: const Text('Comenzar'),
-                ),
-                const SizedBox(height: 16),
-                GrupoPildoras<ModoJuego>(
-                  valores: ModoJuego.values,
-                  seleccionado: _modo,
-                  etiqueta: (m) => m.etiqueta,
-                  onCambio: _cambiarModo,
-                ),
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOut,
-                  child: _modo == ModoJuego.automatico
-                      ? Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const SizedBox(height: 8),
-                            GrupoPildoras<Velocidad>(
-                              valores: Velocidad.values,
-                              seleccionado: _velocidad,
-                              etiqueta: (v) => v.etiqueta,
-                              onCambio: _cambiarVelocidad,
-                            ),
-                          ],
-                        )
-                      : const SizedBox.shrink(),
-                ),
+                // La personalizada trae bastantes ajustes: en horizontal
+                // sobra ancho, así que van al lado de la salida en vez de
+                // empujarla fuera de pantalla.
+                if (widget.modalidad == ModalidadPartida.personalizada)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AjustesPersonalizada(
+                        pasos: _pasos,
+                        onPasos: _cambiarPasos,
+                        jugadoresIniciales: _jugadores,
+                        onJugadores: _cambiarJugadores,
+                      ),
+                      const SizedBox(width: 26),
+                      _accionesSalida(),
+                    ],
+                  )
+                else
+                  _accionesSalida(),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  /// El botón de salida y, debajo, cómo se van a destapar las cartas.
+  Widget _accionesSalida() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ElevatedButton(
+          onPressed: _comenzar,
+          child: const Text('Comenzar'),
+        ),
+        const SizedBox(height: 16),
+        GrupoPildoras<ModoJuego>(
+          valores: ModoJuego.values,
+          seleccionado: _modo,
+          etiqueta: (m) => m.etiqueta,
+          onCambio: _cambiarModo,
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+          child: _modo == ModoJuego.automatico
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 8),
+                    GrupoPildoras<Velocidad>(
+                      valores: Velocidad.values,
+                      seleccionado: _velocidad,
+                      etiqueta: (v) => v.etiqueta,
+                      onCambio: _cambiarVelocidad,
+                    ),
+                  ],
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
     );
   }
 

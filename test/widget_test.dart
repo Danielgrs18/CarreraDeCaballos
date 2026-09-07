@@ -1,3 +1,4 @@
+import 'package:carrera_caballos/game/ajustes_partida.dart';
 import 'package:carrera_caballos/main.dart';
 import 'package:carrera_caballos/screens/game_screen.dart';
 import 'package:carrera_caballos/widgets/pista.dart';
@@ -12,6 +13,16 @@ import 'package:flutter_test/flutter_test.dart';
 int _carriles(WidgetTester tester) =>
     tester.widget<PistaWidget>(find.byType(PistaWidget)).logica.caballos.length;
 
+/// De cuántos pasos es la pista que hay tendida ahora mismo.
+int _pasos(WidgetTester tester) =>
+    tester.widget<PistaWidget>(find.byType(PistaWidget)).logica.pasos;
+
+/// El nombre escrito en el campo del jugador [indice]. Se busca por
+/// posición porque el campo lleva el mismo texto de valor que de pista, y
+/// buscarlo por texto lo encontraría dos veces.
+String _nombreJugador(WidgetTester tester, int indice) =>
+    tester.widget<TextField>(find.byType(TextField).at(indice)).controller!.text;
+
 void main() {
   testWidgets(
       'el menú ofrece partida rápida, modos de juego y desbloquear más',
@@ -25,7 +36,7 @@ void main() {
   });
 
   testWidgets(
-      'modos de juego enseña el catálogo; solo 1 contra 1 está listo',
+      'modos de juego enseña el catálogo; el torneo aún no está listo',
       (tester) async {
     await tester.pumpWidget(const CarreraCaballosApp());
 
@@ -36,7 +47,7 @@ void main() {
     expect(find.text('Torneo personalizado'), findsOneWidget);
     expect(find.text('Partida personalizada'), findsOneWidget);
 
-    // Los otros dos todavía solo avisan.
+    // El torneo es el único que todavía solo avisa.
     await tester.tap(find.text('Torneo personalizado'));
     await tester.pump();
     expect(find.text('Torneo personalizado: próximamente'), findsOneWidget);
@@ -44,6 +55,113 @@ void main() {
     await tester.tap(find.byTooltip('Volver'));
     await tester.pumpAndSettle();
     expect(find.text('Partida rápida'), findsOneWidget);
+  });
+
+  group('Partida personalizada', () {
+    /// Entra al modo desde el catálogo y deja la pantalla en el velo.
+    Future<void> abrir(WidgetTester tester) async {
+      await tester.pumpWidget(const CarreraCaballosApp());
+      await tester.tap(find.text('Modos de juego'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Partida personalizada'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('el velo trae el largo de pista y un jugador de salida',
+        (tester) async {
+      await abrir(tester);
+
+      expect(find.text('LONGITUD DE LA PISTA'), findsOneWidget);
+      expect(find.text('JUGADORES'), findsOneWidget);
+      expect(find.byType(Slider), findsOneWidget);
+
+      // Un solo jugador de partida, con su nombre por defecto.
+      expect(find.byType(TextField), findsOneWidget);
+      expect(_nombreJugador(tester, 0), 'Jugador 1');
+      expect(find.text('Añadir jugador'), findsOneWidget);
+
+      // Corren los 4 caballos: los jugadores solo se reparten los palos.
+      expect(_carriles(tester), 4);
+      // Y la pista arranca con el largo por defecto.
+      expect(_pasos(tester), LongitudPista.porDefecto);
+    });
+
+    testWidgets('el deslizador cambia el largo de la pista al vuelo',
+        (tester) async {
+      await abrir(tester);
+
+      // Se arrastra el pulsador hasta el extremo izquierdo: el mínimo.
+      await tester.drag(find.byType(Slider), const Offset(-500, 0));
+      await tester.pumpAndSettle();
+      expect(_pasos(tester), LongitudPista.minimo);
+
+      await tester.drag(find.byType(Slider), const Offset(500, 0));
+      await tester.pumpAndSettle();
+      expect(_pasos(tester), LongitudPista.maximo);
+    });
+
+    testWidgets('se pueden añadir y quitar jugadores', (tester) async {
+      await abrir(tester);
+
+      // Con un solo jugador no hay nada que quitar.
+      expect(find.byTooltip('Quitar jugador'), findsNothing);
+
+      await tester.tap(find.text('Añadir jugador'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Añadir jugador'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TextField), findsNWidgets(3));
+      expect(_nombreJugador(tester, 1), 'Jugador 2');
+      expect(_nombreJugador(tester, 2), 'Jugador 3');
+      expect(find.byTooltip('Quitar jugador'), findsNWidgets(3));
+
+      await tester.tap(find.byTooltip('Quitar jugador').last);
+      await tester.pumpAndSettle();
+      expect(find.byType(TextField), findsNWidgets(2));
+      expect(find.byTooltip('Quitar jugador'), findsNWidgets(2));
+    });
+
+    testWidgets('el cartel canta los nombres de quienes iban a ese palo',
+        (tester) async {
+      await abrir(tester);
+
+      // Dos jugadores, ambos al mismo palo.
+      await tester.enterText(find.byType(TextField).at(0), 'Ana');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Añadir jugador'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).at(1), 'Luis');
+      await tester.pumpAndSettle();
+
+      // Ana y Luis a oros; el tercero, a copas.
+      for (final desplegable in [0, 1]) {
+        await tester.tap(find.byType(DropdownButton<Palo>).at(desplegable));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Oros').last);
+        await tester.pumpAndSettle();
+      }
+
+      await tester.tap(find.text('Comenzar'));
+      await tester.pump(const Duration(milliseconds: 400));
+
+      for (var i = 0; i < 400 && find.text('GANA').evaluate().isEmpty; i++) {
+        await tester.tap(find.bySemanticsLabel('Sacar carta del mazo').first);
+        await tester.pump(const Duration(milliseconds: 400));
+      }
+      expect(find.text('GANA'), findsOneWidget);
+      await tester.pumpAndSettle();
+
+      // Si ganan oros salen los dos nombres; si gana otro palo, ninguno.
+      if (find.text('OROS').evaluate().isNotEmpty) {
+        expect(find.text('Ana'), findsOneWidget);
+        expect(find.text('Luis'), findsOneWidget);
+        expect(find.text('GANADORES'), findsOneWidget);
+      } else {
+        expect(find.text('Ana'), findsNothing);
+        expect(find.text('Luis'), findsNothing);
+      }
+    });
   });
 
   group('1 contra 1', () {

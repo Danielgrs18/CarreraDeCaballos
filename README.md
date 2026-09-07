@@ -19,9 +19,16 @@ Pensado para Android, y también publicado como web en GitHub Pages.
 | Pantalla | Contenido |
 |---|---|
 | Menú | `Partida rápida`, `Modos de juego` y `Desbloquear más` (aún sin función). |
-| Modos de juego | Catálogo: `1 contra 1` (jugable), `Torneo personalizado` y `Partida personalizada` (ambos, próximamente). |
-| Mesa | En horizontal: barra de modo (`Manual` / `Automático` con tres velocidades), mazo y carta destapada, hilera de cartas de paso y los carriles de los caballos en carrera. En el 1 contra 1, el velo de salida deja elegir el palo de cada jugador antes de empezar. |
+| Modos de juego | Catálogo: `1 contra 1` y `Partida personalizada` (jugables), `Torneo personalizado` (próximamente). |
+| Mesa | En horizontal: barra de modo (`Manual` / `Automático` con tres velocidades), mazo y carta destapada, hilera de cartas de paso y los carriles de los caballos en carrera. |
 | Victoria | El palo ganador en grande con su emblema, y los botones `Revancha` (pista nueva, sin salir de la mesa) y `Finalizar`. |
+
+En el velo de salida se configura cada modalidad: en el `1 contra 1`, el
+palo de cada uno de los dos jugadores; en la `Partida personalizada`, el
+largo de la pista (de 2 a 12 pasos) y una lista de jugadores con nombre y
+palo —pueden repetir palo, y corren los 4 caballos igual—. Al terminar
+una personalizada, el cartel canta también los nombres de quienes iban al
+palo ganador.
 
 Salir de una carrera en marcha —con la flecha de la barra o con el back
 del sistema— pide confirmación antes de perder el progreso.
@@ -30,7 +37,7 @@ del sistema— pide confirmación antes de perder el progreso.
 
 ```
 lib/
-  models/      Carta, Palo, Baraja y Caballo
+  models/      Carta, Palo, Baraja, Caballo y Jugador
   game/        Reglas de la carrera (LogicaJuego) y ajustes de la partida
   theme/       Paleta (tapete verde, botones rojo oscuro) y tema
   widgets/     Tapete, carta española, mazo, pista, controles, selector de
@@ -39,9 +46,11 @@ lib/
   screens/     Menú, catálogo de modos y mesa de juego
 ```
 
-`LogicaJuego` no sabe nada de "1 contra 1": simplemente acepta qué palos
-compiten (2 o más). La mesa, la pista, el cartel de victoria y la
-revancha son el mismo código para cualquier número de caballos.
+`LogicaJuego` no sabe nada de las modalidades: solo acepta qué palos
+compiten (2 o más) y de cuántos pasos es la pista. La mesa, el cartel de
+victoria y la revancha son el mismo código en las tres. Los jugadores con
+nombre son puro adorno de la personalizada: no tocan las reglas, solo se
+reparten los palos para saber a quién felicitar al final.
 
 Las cartas no son imágenes: se dibujan con `CustomPainter`, así que
 escalan sin pixelarse y no pesan nada. El marco lleva las **pintas**

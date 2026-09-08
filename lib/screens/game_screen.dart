@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../game/ajustes_app.dart';
 import '../game/ajustes_partida.dart';
 import '../game/campeonato.dart';
 import '../game/logica_juego.dart';
@@ -71,7 +72,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   /// se ignora: no poder evitar que se apague la pantalla no es motivo
   /// para tumbar la partida.
   void _mantenerPantallaEncendida(bool encendida) {
-    WakelockPlus.toggle(enable: encendida).catchError((_) {});
+    final activar = encendida && ajustesApp.pantallaEncendida;
+    WakelockPlus.toggle(enable: activar).catchError((_) {});
+  }
+
+  /// Los ajustes generales pueden cambiar a media partida desde el menú:
+  /// apagar la pantalla siempre encendida tiene que notarse al momento.
+  void _ajustesCambiados() {
+    _mantenerPantallaEncendida(_fase == _Fase.corriendo);
   }
 
   /// Una pista nueva, con los palos y el largo que toquen según la
@@ -90,6 +98,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     _logica = _nuevaPartida();
+    ajustesApp.addListener(_ajustesCambiados);
     WidgetsBinding.instance.addObserver(this);
     // Pedida dentro de initState, la rotación se pierde en algunos móviles
     // porque la actividad aún se está montando: se pide tras el primer
@@ -106,6 +115,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     _reloj?.cancel();
+    ajustesApp.removeListener(_ajustesCambiados);
     WidgetsBinding.instance.removeObserver(this);
     _mantenerPantallaEncendida(false);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -190,7 +200,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _sacarCartaAMano() {
-    HapticFeedback.selectionClick();
+    if (ajustesApp.vibracion) HapticFeedback.selectionClick();
     _sacarCarta();
   }
 
@@ -415,6 +425,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               onSalir: _finalizar,
               mostrarSelectorModo: _fase != _Fase.preparado,
               rotulo: _rotuloRonda,
+              // El menú tapa la mesa: en automático las cartas seguirían
+              // saliendo a ciegas detrás del diálogo.
+              onAbrirMenu: _pararReloj,
+              onCerrarMenu: _sincronizarReloj,
             ),
             // El velo de salida tapa solo la mesa: así se puede elegir
             // modo y velocidad antes de dar la salida.

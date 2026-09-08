@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../game/ajustes_partida.dart';
 import '../theme/app_theme.dart';
+import '../widgets/menu_app.dart';
 import '../widgets/tapete.dart';
 import 'game_screen.dart';
 
@@ -114,7 +115,7 @@ class ModosJuegoScreen extends StatelessWidget {
 
   Widget _cabecera(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 4, 16, 4),
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
       child: Row(
         children: [
           IconButton(
@@ -130,9 +131,9 @@ class ModosJuegoScreen extends StatelessWidget {
               style: AppTheme.tituloDisplay.copyWith(fontSize: 22),
             ),
           ),
-          // Ocupa el mismo ancho que el botón de volver para centrar el
-          // título de verdad.
-          const SizedBox(width: 48),
+          // Ocupa el mismo ancho que el botón de volver, así que además
+          // de servir de menú centra el título de verdad.
+          const BotonMenuApp(),
         ],
       ),
     );

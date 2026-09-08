@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../game/ajustes_partida.dart';
 import '../theme/app_theme.dart';
+import 'menu_app.dart';
 
 /// Barra superior de la partida: modo de juego, velocidad del automático y
 /// cartas que quedan en el mazo.
@@ -22,6 +23,11 @@ class ControlesJuego extends StatelessWidget {
   /// el campeonato. Los modos de una sola carrera no la necesitan.
   final String? rotulo;
 
+  /// Se avisa al abrir y cerrar el menú, para parar la carrera mientras
+  /// tapa la mesa.
+  final VoidCallback? onAbrirMenu;
+  final VoidCallback? onCerrarMenu;
+
   const ControlesJuego({
     super.key,
     required this.modo,
@@ -33,6 +39,8 @@ class ControlesJuego extends StatelessWidget {
     required this.onSalir,
     this.mostrarSelectorModo = true,
     this.rotulo,
+    this.onAbrirMenu,
+    this.onCerrarMenu,
   });
 
   @override
@@ -107,6 +115,7 @@ class ControlesJuego extends StatelessWidget {
             ),
           const Spacer(),
           _ContadorMazo(cartas: cartasEnMazo),
+          BotonMenuApp(onAbrir: onAbrirMenu, onCerrar: onCerrarMenu),
         ],
       ),
     );

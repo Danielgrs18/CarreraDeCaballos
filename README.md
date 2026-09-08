@@ -21,6 +21,7 @@ Pensado para Android, y también publicado como web en GitHub Pages.
 | Pantalla | Contenido |
 |---|---|
 | Menú | `Partida rápida`, `Modos de juego` y `Desbloquear más` (aún sin función). |
+| Ajustes | Detrás del botón de la esquina superior derecha, presente en todas las pantallas: silencio, vibración, pantalla siempre encendida y las reglas del juego. |
 | Modos de juego | Catálogo: `1 contra 1`, `Campeonato` y `Partida personalizada`. |
 | Mesa | En horizontal: barra de modo (`Manual` / `Automático` con tres velocidades), mazo y carta destapada, hilera de cartas de paso y los carriles de los caballos en carrera. Si la carrera va a seguir hasta el final, una columna a la derecha va cantando el puesto de cada uno. |
 | Victoria | El palo ganador en grande con su emblema, y los botones `Seguir hasta que lleguen todos`, `Revancha` (pista nueva, sin salir de la mesa) y `Finalizar`. |
@@ -60,16 +61,34 @@ quien más puntos sume, y si hay empate arriba se cantan todos.
 Salir de una carrera en marcha —con la flecha de la barra o con el back
 del sistema— pide confirmación antes de perder el progreso.
 
+## Ajustes
+
+El botón de la esquina superior derecha abre el mismo menú en todas las
+pantallas. Lo que se elija se guarda y sigue puesto en el siguiente
+arranque:
+
+- **Silenciar**: todavía no hay efectos de sonido, y el menú lo dice; la
+  preferencia se guarda ya para cuando los haya.
+- **Vibración**: el toque al destapar carta a mano.
+- **Pantalla siempre encendida**: viene puesto, porque en automático es
+  fácil dejar el móvil apoyado sin tocarlo. Apagarlo se nota al momento,
+  aunque la carrera esté a medias.
+- **Cómo se juega**: las reglas, por si alguien llega sin conocerlas.
+
+Abrir el menú sobre la mesa detiene el reloj del modo automático: si no,
+las cartas seguirían saliendo a ciegas por detrás del diálogo.
+
 ## Estructura
 
 ```
 lib/
   models/      Carta, Palo, Baraja, Caballo y Jugador
-  game/        Reglas de la carrera (LogicaJuego), marcador del campeonato
-               y ajustes de la partida
+  game/        Reglas de la carrera (LogicaJuego), marcador del campeonato,
+               ajustes de la partida y ajustes generales de la app
   theme/       Paleta (tapete verde, botones rojo oscuro) y tema
   widgets/     Tapete, carta española, mazo, pista, controles, selector de
-               palo y los carteles de victoria y clasificación
+               palo, menú de ajustes y los carteles de victoria y
+               clasificación
     paint/     Trazo vectorial de los 4 palos y de las 3 figuras
   screens/     Menú, catálogo de modos y mesa de juego
 ```

@@ -463,4 +463,50 @@ void main() {
       matchesGoldenFile('capturas/pista_puestos.png'),
     );
   });
+
+  testWidgets('menú de la app', (tester) async {
+    await _lienzo(tester, const Size(420, 860));
+
+    await tester.pumpWidget(const CarreraCaballosApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Menú'));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('capturas/menu_ajustes.png'),
+    );
+  });
+
+  testWidgets('menú sobre la mesa, en horizontal', (tester) async {
+    await _lienzo(tester, const Size(880, 420));
+
+    await tester.pumpWidget(const CarreraCaballosApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Partida rápida'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Menú'));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('capturas/menu_mesa.png'),
+    );
+  });
+
+  testWidgets('reglas del juego', (tester) async {
+    await _lienzo(tester, const Size(420, 860));
+
+    await tester.pumpWidget(const CarreraCaballosApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Menú'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cómo se juega'));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('capturas/reglas.png'),
+    );
+  });
 }

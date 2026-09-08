@@ -1,3 +1,4 @@
+import 'package:carrera_caballos/game/ajustes_app.dart';
 import 'package:carrera_caballos/game/ajustes_partida.dart';
 import 'package:carrera_caballos/main.dart';
 import 'package:carrera_caballos/screens/game_screen.dart';
@@ -8,6 +9,7 @@ import 'package:carrera_caballos/widgets/paint/palos.dart';
 import 'package:carrera_caballos/models/carta.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Cuántos caballos hay corriendo en la pista mostrada ahora mismo.
 int _carriles(WidgetTester tester) =>
@@ -23,7 +25,19 @@ int _pasos(WidgetTester tester) =>
 String _nombreJugador(WidgetTester tester, int indice) =>
     tester.widget<TextField>(find.byType(TextField).at(indice)).controller!.text;
 
+/// Cuántas cartas quedan por robar en la partida que hay en pantalla.
+int _cartasEnMazo(WidgetTester tester) => tester
+    .widget<PistaWidget>(find.byType(PistaWidget))
+    .logica
+    .cartasEnMazo;
+
 void main() {
+  setUpAll(() => SharedPreferences.setMockInitialValues({}));
+
+  // Los ajustes son un único objeto compartido que sobrevive a todos los
+  // tests: sin esto, el que toca un interruptor se lo deja puesto al resto.
+  setUp(ajustesApp.reiniciar);
+
   testWidgets(
       'el menú ofrece partida rápida, modos de juego y desbloquear más',
       (tester) async {
@@ -708,6 +722,108 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('CAMPEONATO'), findsNothing);
       expect(find.text('Comenzar'), findsOneWidget);
+    });
+  });
+
+  group('Menú de la app', () {
+    testWidgets('el botón está en la esquina de las tres pantallas',
+        (tester) async {
+      await tester.pumpWidget(const CarreraCaballosApp());
+      expect(find.byTooltip('Menú'), findsOneWidget);
+
+      await tester.tap(find.text('Modos de juego'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Menú'), findsOneWidget);
+
+      await tester.tap(find.text('1 contra 1'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Menú'), findsOneWidget);
+    });
+
+    testWidgets('los interruptores recuerdan lo que se elige',
+        (tester) async {
+      await tester.pumpWidget(const CarreraCaballosApp());
+      await tester.tap(find.byTooltip('Menú'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Silenciar'), findsOneWidget);
+      expect(find.text('Vibración'), findsOneWidget);
+      expect(find.text('Pantalla siempre encendida'), findsOneWidget);
+      // Se avisa de que el silencio todavía no tiene nada que callar.
+      expect(
+        find.text('Aún no hay efectos de sonido que callar'),
+        findsOneWidget,
+      );
+
+      expect(ajustesApp.vibracion, isTrue);
+      await tester.tap(find.text('Vibración'));
+      await tester.pumpAndSettle();
+      expect(ajustesApp.vibracion, isFalse);
+
+      expect(ajustesApp.silencio, isFalse);
+      await tester.tap(find.text('Silenciar'));
+      await tester.pumpAndSettle();
+      expect(ajustesApp.silencio, isTrue);
+
+      await tester.tap(find.text('Cerrar'));
+      await tester.pumpAndSettle();
+      expect(find.text('Silenciar'), findsNothing);
+      // Y lo elegido sigue puesto al volver a abrirlo.
+      await tester.tap(find.byTooltip('Menú'));
+      await tester.pumpAndSettle();
+      expect(ajustesApp.silencio, isTrue);
+    });
+
+    testWidgets('desde el menú se llega a las reglas', (tester) async {
+      // En horizontal el alto escasea y las reglas son largas: si el
+      // diálogo no se desplazara, el desbordamiento tumbaría el test.
+      tester.view.physicalSize = const Size(880, 420);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(const CarreraCaballosApp());
+      await tester.tap(find.byTooltip('Menú'));
+      await tester.pumpAndSettle();
+
+      // Con tan poco alto la entrada cae bajo el pliegue del menú: hay
+      // que traerla a la vista o el toque se iría al velo de fuera.
+      await tester.ensureVisible(find.text('Cómo se juega'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cómo se juega'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('el 11 de cada palo'), findsOneWidget);
+      expect(find.textContaining('retrocede una casilla'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('Entendido'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Entendido'));
+      await tester.pumpAndSettle();
+      // Se vuelve al menú, que sigue abierto detrás.
+      expect(find.text('Silenciar'), findsOneWidget);
+    });
+
+    testWidgets('abrir el menú para la carrera automática', (tester) async {
+      await tester.pumpWidget(const CarreraCaballosApp());
+      await tester.tap(find.text('Partida rápida'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Automático'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Comenzar'));
+      await tester.pump(const Duration(seconds: 2));
+
+      final antes = _cartasEnMazo(tester);
+
+      await tester.tap(find.byTooltip('Menú'));
+      await tester.pump(const Duration(milliseconds: 400));
+      // Con el menú tapando la mesa no deben salir cartas a ciegas.
+      await tester.pump(const Duration(seconds: 3));
+      expect(_cartasEnMazo(tester), antes);
+
+      await tester.tap(find.text('Cerrar'));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(seconds: 2));
+      expect(_cartasEnMazo(tester), lessThan(antes));
     });
   });
 }

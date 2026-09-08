@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../models/carta.dart';
 import '../theme/app_theme.dart';
 import '../widgets/carta_espanola.dart';
+import '../widgets/menu_app.dart';
 import '../widgets/tapete.dart';
 import 'game_screen.dart';
 import 'modos_juego_screen.dart';
@@ -63,60 +64,71 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: Tapete(
         child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, restricciones) {
-              final compacto = restricciones.maxHeight < 560;
-
-              return Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 32, vertical: 24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (!compacto) ...[
-                        const _AbanicoCaballos(),
-                        const SizedBox(height: 28),
-                      ],
-                      Text(
-                        'CARRERA\nDE CABALLOS',
-                        textAlign: TextAlign.center,
-                        style: AppTheme.tituloDisplay.copyWith(
-                          fontSize: compacto ? 28 : 36,
-                          height: 1.15,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        width: 120,
-                        height: 2,
-                        color: AppColors.oro.withValues(alpha: 0.7),
-                      ),
-                      SizedBox(height: compacto ? 28 : 44),
-                      _BotonMenu(
-                        texto: 'Partida rápida',
-                        onPressed: _partidaRapida,
-                      ),
-                      const SizedBox(height: 16),
-                      _BotonMenu(
-                        texto: 'Modos de juego',
-                        secundario: true,
-                        onPressed: _modosJuego,
-                      ),
-                      const SizedBox(height: 16),
-                      _BotonMenu(
-                        texto: 'Desbloquear más',
-                        secundario: true,
-                        onPressed: _desbloquearMas,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
+          child: Stack(
+            children: [
+              _contenido(),
+              // El menú, en la esquina, por encima del contenido: aquí no
+              // hay barra superior donde colgarlo.
+              const Positioned(top: 0, right: 4, child: BotonMenuApp()),
+            ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _contenido() {
+    return LayoutBuilder(
+      builder: (context, restricciones) {
+        final compacto = restricciones.maxHeight < 560;
+
+        return Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 32, vertical: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!compacto) ...[
+                  const _AbanicoCaballos(),
+                  const SizedBox(height: 28),
+                ],
+                Text(
+                  'CARRERA\nDE CABALLOS',
+                  textAlign: TextAlign.center,
+                  style: AppTheme.tituloDisplay.copyWith(
+                    fontSize: compacto ? 28 : 36,
+                    height: 1.15,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  width: 120,
+                  height: 2,
+                  color: AppColors.oro.withValues(alpha: 0.7),
+                ),
+                SizedBox(height: compacto ? 28 : 44),
+                _BotonMenu(
+                  texto: 'Partida rápida',
+                  onPressed: _partidaRapida,
+                ),
+                const SizedBox(height: 16),
+                _BotonMenu(
+                  texto: 'Modos de juego',
+                  secundario: true,
+                  onPressed: _modosJuego,
+                ),
+                const SizedBox(height: 16),
+                _BotonMenu(
+                  texto: 'Desbloquear más',
+                  secundario: true,
+                  onPressed: _desbloquearMas,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

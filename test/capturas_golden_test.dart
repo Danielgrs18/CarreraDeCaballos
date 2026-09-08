@@ -4,13 +4,16 @@
 library;
 
 import 'dart:io';
+import 'dart:math';
 
 import 'package:carrera_caballos/main.dart';
+import 'package:carrera_caballos/game/logica_juego.dart';
 import 'package:carrera_caballos/models/carta.dart';
 import 'package:carrera_caballos/theme/app_theme.dart';
 import 'package:carrera_caballos/widgets/carta_espanola.dart';
 import 'package:carrera_caballos/widgets/cartel_clasificacion.dart';
 import 'package:carrera_caballos/widgets/cartel_ganador.dart';
+import 'package:carrera_caballos/widgets/pista.dart';
 import 'package:carrera_caballos/widgets/tapete.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -422,6 +425,42 @@ void main() {
     await expectLater(
       find.byType(MaterialApp),
       matchesGoldenFile('capturas/campeonato_ronda.png'),
+    );
+  });
+
+  testWidgets('pista con la columna de puestos', (tester) async {
+    await _lienzo(tester, const Size(760, 300));
+
+    // Se juega hasta que hayan entrado dos: así se ven las chapas del 1º
+    // y el 2º, y otros dos caballos todavía corriendo.
+    final juego = LogicaJuego(pasos: 6, random: Random(4));
+    var turnos = 0;
+    while (juego.clasificacion.length < 2 && !juego.agotada && turnos++ < 500) {
+      juego.jugarTurno();
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.tema,
+        home: Scaffold(
+          body: Tapete(
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: PistaWidget(
+                logica: juego,
+                duracionAnimacion: const Duration(milliseconds: 300),
+                mostrarPuestos: true,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(Tapete),
+      matchesGoldenFile('capturas/pista_puestos.png'),
     );
   });
 }

@@ -555,7 +555,11 @@ void main() {
 
       await _destaparHasta(tester, 'GANA');
 
-      // La carrera está decidida, pero aún puede seguir.
+      // La carrera está decidida, pero aún puede seguir. Hasta pedirlo,
+      // la pista no gasta sitio en una columna de puestos.
+      expect(find.text('PUESTO'), findsNothing);
+      expect(find.text('1º'), findsNothing);
+
       expect(find.text('Seguir hasta que lleguen todos'), findsOneWidget);
       await tester.tap(find.text('Seguir hasta que lleguen todos'));
       // Nada de pumpAndSettle: al reanudar, el latido del mazo vuelve a
@@ -565,13 +569,21 @@ void main() {
       // Se retira el cartel y se vuelve a poder destapar cartas.
       expect(find.text('GANA'), findsNothing);
 
+      // Y la pista estrena la columna de puestos, con el primero ya dado.
+      expect(find.text('PUESTO'), findsOneWidget);
+      expect(find.text('1º'), findsOneWidget);
+      // Los que siguen en carrera aún no tienen puesto que enseñar.
+      expect(find.text('2º'), findsNothing);
+
       await _destaparHasta(tester, 'CLASIFICACIÓN');
 
       // Los cuatro palos aparecen con su puesto y el primero, cantado.
       for (final palo in Palo.values) {
         expect(find.text(palo.nombre), findsOneWidget);
       }
-      expect(find.text('1º'), findsOneWidget);
+      // Dos veces cada puesto: la chapa de la pista, que sigue detrás, y
+      // la línea del cartel que la tapa.
+      expect(find.text('1º'), findsNWidgets(2));
       expect(find.text('Revancha'), findsOneWidget);
       expect(find.text('Finalizar'), findsOneWidget);
       // Ya no hay nada que seguir.

@@ -22,7 +22,7 @@ Pensado para Android, y también publicado como web en GitHub Pages.
 |---|---|
 | Menú | `Partida rápida`, `Modos de juego` y `Desbloquear más` (aún sin función). |
 | Modos de juego | Catálogo: `1 contra 1`, `Campeonato` y `Partida personalizada`. |
-| Mesa | En horizontal: barra de modo (`Manual` / `Automático` con tres velocidades), mazo y carta destapada, hilera de cartas de paso y los carriles de los caballos en carrera. |
+| Mesa | En horizontal: barra de modo (`Manual` / `Automático` con tres velocidades), mazo y carta destapada, hilera de cartas de paso y los carriles de los caballos en carrera. Si la carrera va a seguir hasta el final, una columna a la derecha va cantando el puesto de cada uno. |
 | Victoria | El palo ganador en grande con su emblema, y los botones `Seguir hasta que lleguen todos`, `Revancha` (pista nueva, sin salir de la mesa) y `Finalizar`. |
 | Clasificación | El orden de llegada completo, con los rezagados al final. En el campeonato lleva además el marcador y el paso a la siguiente ronda. |
 
@@ -41,6 +41,12 @@ quedar algún caballo sin llegar nunca —si las 9 cartas de su palo se
 tendieron en la pista, no le queda ninguna con la que avanzar—, así que
 la carrera se corta en cuanto los que faltan ya no pueden moverse, y esos
 salen al final de la clasificación como rezagados.
+
+Mientras dura, la pista reserva una columna a la derecha de la meta donde
+cada caballo estrena su chapa de puesto (`1º`, `2º`…) en cuanto cruza. La
+columna solo aparece cuando la carrera va a prolongarse —en el campeonato,
+desde la salida—: en una carrera normal sobraría un hueco para un número
+que llegaría justo al acabarse todo.
 
 ## Campeonato
 

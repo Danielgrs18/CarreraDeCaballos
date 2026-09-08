@@ -17,15 +17,23 @@ class PistaWidget extends StatelessWidget {
   /// Palo que acaba de avanzar, para darle un destello.
   final Palo? destacado;
 
+  /// Reserva una columna a la derecha de la meta con el puesto en el que
+  /// va entrando cada caballo. Solo tiene sentido cuando la carrera va a
+  /// seguir después del primero: si no, sobraría un hueco para un único
+  /// número que aparece justo cuando ya se ha acabado todo.
+  final bool mostrarPuestos;
+
   const PistaWidget({
     super.key,
     required this.logica,
     required this.duracionAnimacion,
     this.destacado,
+    this.mostrarPuestos = false,
   });
 
   static const double _anchoPuerta = 46;
   static const double _anchoMeta = 20;
+  static const double _anchoPuesto = 34;
 
   @override
   Widget build(BuildContext context) {
@@ -34,8 +42,10 @@ class PistaWidget extends StatelessWidget {
         final ancho = restricciones.maxWidth;
         final alto = restricciones.maxHeight;
         final celdas = logica.casillas;
+        final anchoPuestos = mostrarPuestos ? _anchoPuesto : 0.0;
         final anchoCelda =
-            ((ancho - _anchoPuerta - _anchoMeta) / celdas).clamp(18.0, 140.0);
+            ((ancho - _anchoPuerta - _anchoMeta - anchoPuestos) / celdas)
+                .clamp(18.0, 140.0);
 
         // Puede haber menos de 4 caballos (el 1 contra 1 solo trae 2): se
         // reparten los carriles según los que compitan de verdad, siempre en
@@ -67,6 +77,7 @@ class PistaWidget extends StatelessWidget {
                 anchoPuerta: _anchoPuerta,
                 anchoCelda: anchoCelda,
                 alto: altoTrampas,
+                anchoPuestos: anchoPuestos > 0 ? _anchoMeta + anchoPuestos : 0,
               ),
             ),
             const SizedBox(height: 6),
@@ -86,9 +97,11 @@ class PistaWidget extends StatelessWidget {
                         anchoPuerta: _anchoPuerta,
                         anchoMeta: _anchoMeta,
                         anchoCelda: anchoCelda,
+                        anchoPuesto: anchoPuestos,
                         alto: altoCarril,
                         duracion: duracionAnimacion,
                         destacado: destacado == corredores[i],
+                        puesto: _puestoDe(corredores[i]),
                       ),
                     ),
                   ],
@@ -100,6 +113,13 @@ class PistaWidget extends StatelessWidget {
       },
     );
   }
+
+  /// En qué puesto entró este caballo, contando desde 1, o `null` si aún
+  /// no ha cruzado la meta.
+  int? _puestoDe(Palo palo) {
+    final puesto = logica.clasificacion.indexOf(palo);
+    return puesto < 0 ? null : puesto + 1;
+  }
 }
 
 /// Las cartas boca abajo que marcan cada paso. Al descubrirse se giran y
@@ -110,11 +130,16 @@ class _HileraPasos extends StatelessWidget {
   final double anchoCelda;
   final double alto;
 
+  /// Ancho del hueco que queda a la derecha para los puestos, 0 si no se
+  /// están mostrando.
+  final double anchoPuestos;
+
   const _HileraPasos({
     required this.logica,
     required this.anchoPuerta,
     required this.anchoCelda,
     required this.alto,
+    required this.anchoPuestos,
   });
 
   @override
@@ -144,6 +169,11 @@ class _HileraPasos extends StatelessWidget {
                     )
                   : _BanderinMeta(alto: anchoCarta * 0.9),
             ),
+          ),
+        if (anchoPuestos > 0)
+          SizedBox(
+            width: anchoPuestos,
+            child: const _RotuloVertical(texto: 'PUESTO'),
           ),
       ],
     );
@@ -236,9 +266,13 @@ class _Carril extends StatelessWidget {
   final double anchoPuerta;
   final double anchoMeta;
   final double anchoCelda;
+  final double anchoPuesto;
   final double alto;
   final Duration duracion;
   final bool destacado;
+
+  /// Puesto de llegada, contando desde 1, o `null` si sigue en carrera.
+  final int? puesto;
 
   const _Carril({
     required this.palo,
@@ -247,9 +281,11 @@ class _Carril extends StatelessWidget {
     required this.anchoPuerta,
     required this.anchoMeta,
     required this.anchoCelda,
+    required this.anchoPuesto,
     required this.alto,
     required this.duracion,
     required this.destacado,
+    required this.puesto,
   });
 
   /// El centro horizontal que le toca a la ficha según su posición: en el
@@ -285,6 +321,7 @@ class _Carril extends StatelessWidget {
               _puerta(color),
               for (var i = 0; i < celdas; i++) _casilla(i),
               _meta(),
+              if (anchoPuesto > 0) _distintivoPuesto(),
             ],
           ),
           AnimatedPositioned(
@@ -337,6 +374,55 @@ class _Carril extends StatelessWidget {
     return SizedBox(
       width: anchoMeta,
       child: CustomPaint(painter: const _CuadrosMeta()),
+    );
+  }
+
+  /// La chapa con el puesto, que entra con un rebote en cuanto el caballo
+  /// cruza. Mientras corre, el hueco se queda reservado y vacío para que
+  /// los carriles no cambien de ancho al ir llegando unos y otros.
+  Widget _distintivoPuesto() {
+    final ganador = puesto == 1;
+
+    return SizedBox(
+      width: anchoPuesto,
+      child: Center(
+        child: AnimatedScale(
+          duration: const Duration(milliseconds: 340),
+          curve: Curves.easeOutBack,
+          scale: puesto == null ? 0 : 1,
+          // Sin puesto no se monta la chapa: encogerla bastar\u00eda para no
+          // verla, pero su n\u00famero seguir\u00eda ah\u00ed para quien lea la pantalla
+          // en voz alta o rastree la interfaz.
+          child: puesto == null
+              ? const SizedBox.shrink()
+              : Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: ganador
+                        ? AppColors.oro
+                        : Colors.black.withValues(alpha: 0.38),
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(
+                      color: ganador
+                          ? AppColors.oroClaro
+                          : AppColors.oro.withValues(alpha: 0.7),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Text(
+                    '$puesto\u00ba',
+                    style: TextStyle(
+                      fontFamily: AppTheme.familiaTitulo,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      color:
+                          ganador ? AppColors.tapeteOscuro : AppColors.oroClaro,
+                    ),
+                  ),
+                ),
+        ),
+      ),
     );
   }
 }

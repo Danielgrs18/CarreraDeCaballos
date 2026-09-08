@@ -598,6 +598,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       ? _velocidad.animacion
                       : const Duration(milliseconds: 380),
                   destacado: _destacado,
+                  mostrarPuestos: _hastaElFinal,
                 ),
               ),
             ],

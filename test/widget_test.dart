@@ -1,8 +1,11 @@
 import 'package:carrera_caballos/game/ajustes_app.dart';
 import 'package:carrera_caballos/game/ajustes_partida.dart';
+import 'package:carrera_caballos/game/cosmeticos.dart';
+import 'package:carrera_caballos/game/enlaces.dart';
 import 'package:carrera_caballos/main.dart';
 import 'package:carrera_caballos/screens/game_screen.dart';
 import 'package:carrera_caballos/widgets/pista.dart';
+import 'package:carrera_caballos/widgets/tapete.dart';
 import 'package:carrera_caballos/widgets/carta_espanola.dart';
 import 'package:carrera_caballos/widgets/cartel_ganador.dart';
 import 'package:carrera_caballos/widgets/paint/palos.dart';
@@ -39,14 +42,16 @@ void main() {
   setUp(ajustesApp.reiniciar);
 
   testWidgets(
-      'el menú ofrece partida rápida, modos de juego y desbloquear más',
+      'el menú ofrece partida rápida, modos de juego y personalizar',
       (tester) async {
     await tester.pumpWidget(const CarreraCaballosApp());
 
     expect(find.text('Partida rápida'), findsOneWidget);
     expect(find.text('Modos de juego'), findsOneWidget);
-    expect(find.text('Desbloquear más'), findsOneWidget);
+    expect(find.text('Personalizar'), findsOneWidget);
     expect(find.text('Baraja española'), findsNothing);
+    // El antiguo "Desbloquear más" no prometía nada que existiera.
+    expect(find.text('Desbloquear más'), findsNothing);
   });
 
   testWidgets(
@@ -257,14 +262,74 @@ void main() {
     });
   });
 
-  testWidgets('"Desbloquear más" todavía no lleva a ninguna parte',
-      (tester) async {
-    await tester.pumpWidget(const CarreraCaballosApp());
+  group('Personalizar', () {
+    Future<void> abrir(WidgetTester tester) async {
+      await tester.pumpWidget(const CarreraCaballosApp());
+      await tester.tap(find.text('Personalizar'));
+      await tester.pumpAndSettle();
+    }
 
-    await tester.tap(find.text('Desbloquear más'));
-    await tester.pump();
+    testWidgets('ofrece paños y dorsos, con lo elegido de fábrica',
+        (tester) async {
+      await abrir(tester);
 
-    expect(find.text('Próximamente'), findsOneWidget);
+      expect(find.text('PAÑO DE LA MESA'), findsOneWidget);
+      expect(find.text('DORSO DE LA BARAJA'), findsOneWidget);
+      for (final pano in PanoTapete.values) {
+        expect(find.text(pano.etiqueta), findsOneWidget);
+      }
+      for (final dorso in DorsoBaraja.values) {
+        expect(find.text(dorso.etiqueta), findsOneWidget);
+      }
+
+      expect(ajustesApp.pano, PanoTapete.verde);
+      expect(ajustesApp.dorso, DorsoBaraja.granate);
+    });
+
+    testWidgets('elegir un paño y un dorso los deja puestos', (tester) async {
+      await abrir(tester);
+
+      await tester.tap(find.text(PanoTapete.azul.etiqueta));
+      await tester.pumpAndSettle();
+      expect(ajustesApp.pano, PanoTapete.azul);
+
+      await tester.tap(find.text(DorsoBaraja.ebano.etiqueta));
+      await tester.pumpAndSettle();
+      expect(ajustesApp.dorso, DorsoBaraja.ebano);
+
+      // Y siguen puestos al volver al menú y entrar otra vez.
+      await tester.tap(find.byTooltip('Volver'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Personalizar'));
+      await tester.pumpAndSettle();
+      expect(ajustesApp.pano, PanoTapete.azul);
+      expect(ajustesApp.dorso, DorsoBaraja.ebano);
+    });
+
+    testWidgets('el paño elegido tiñe también la mesa de juego',
+        (tester) async {
+      await abrir(tester);
+      await tester.tap(find.text(PanoTapete.burdeos.etiqueta));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Volver'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Partida rápida'));
+      await tester.pumpAndSettle();
+
+      // El degradado del tapete de la mesa es el del paño elegido.
+      final fondo = tester.widget<DecoratedBox>(
+        find
+            .descendant(
+              of: find.byType(Tapete),
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
+      );
+      final gradiente =
+          (fondo.decoration as BoxDecoration).gradient! as RadialGradient;
+      expect(gradiente.colors.first, PanoTapete.burdeos.claro);
+    });
   });
 
   testWidgets('partida rápida enseña el tablero con el botón de comenzar',
@@ -778,6 +843,20 @@ void main() {
       await tester.tap(find.byTooltip('Menú'));
       await tester.pumpAndSettle();
       expect(ajustesApp.silencio, isTrue);
+    });
+
+    testWidgets('la entrada de apoyo solo sale si hay enlace configurado',
+        (tester) async {
+      await tester.pumpWidget(const CarreraCaballosApp());
+      await tester.tap(find.byTooltip('Menú'));
+      await tester.pumpAndSettle();
+
+      // El código sí es público y siempre está.
+      expect(find.text('Código fuente'), findsOneWidget);
+      // La de donaciones espera a que se pegue una dirección propia: una
+      // de ejemplo mandaría el dinero a otra parte.
+      expect(Enlaces.hayDonacion, isFalse);
+      expect(find.text('Apoyar el proyecto'), findsNothing);
     });
 
     testWidgets('desde el menú se llega a las reglas', (tester) async {

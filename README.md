@@ -20,7 +20,8 @@ Pensado para Android, y también publicado como web en GitHub Pages.
 
 | Pantalla | Contenido |
 |---|---|
-| Menú | `Partida rápida`, `Modos de juego` y `Desbloquear más` (aún sin función). |
+| Menú | `Partida rápida`, `Modos de juego` y `Personalizar`. |
+| Personalizar | El paño de la mesa y el dorso de la baraja, con una muestra que se actualiza al tocarlos. |
 | Ajustes | Detrás del botón de la esquina superior derecha, presente en todas las pantallas: silencio, vibración, pantalla siempre encendida y las reglas del juego. |
 | Modos de juego | Catálogo: `1 contra 1`, `Campeonato` y `Partida personalizada`. |
 | Mesa | En horizontal: barra de modo (`Manual` / `Automático` con tres velocidades), mazo y carta destapada, hilera de cartas de paso y los carriles de los caballos en carrera. Si la carrera va a seguir hasta el final, una columna a la derecha va cantando el puesto de cada uno. |
@@ -74,6 +75,25 @@ arranque:
   fácil dejar el móvil apoyado sin tocarlo. Apagarlo se nota al momento,
   aunque la carrera esté a medias.
 - **Cómo se juega**: las reglas, por si alguien llega sin conocerlas.
+- **Código fuente** y, cuando haya dirección configurada, **Apoyar el
+  proyecto**.
+
+El enlace de apoyo vive en `lib/game/enlaces.dart` y **viene vacío a
+propósito**: hasta que no se pegue ahí una dirección propia, la entrada no
+aparece en el menú. No se deja ninguna de ejemplo porque un enlace de
+donación equivocado manda el dinero a otro sitio.
+
+## Personalizar
+
+Cuatro paños (verde, burdeos, azul, grafito) y cuatro dorsos de baraja
+(granate, bosque, índigo, ébano). El paño tiñe el fondo y también los
+recuadros que se apoyan encima —velo de salida, carteles, menú—, así que
+la mesa entera cambia de color a la vez. El dorso conserva el grabado —el
+filete dorado, la celosía y el medallón— y solo cambia el color de la
+cartulina: es lo que mantiene el aire de baraja de verdad.
+
+Ambos se guardan en el navegador junto al resto de ajustes, así que
+siguen puestos al volver.
 
 Abrir el menú sobre la mesa detiene el reloj del modo automático: si no,
 las cartas seguirían saliendo a ciegas por detrás del diálogo.
@@ -84,13 +104,14 @@ las cartas seguirían saliendo a ciegas por detrás del diálogo.
 lib/
   models/      Carta, Palo, Baraja, Caballo y Jugador
   game/        Reglas de la carrera (LogicaJuego), marcador del campeonato,
-               ajustes de la partida y ajustes generales de la app
+               ajustes de la partida, ajustes generales, cosméticos y
+               enlaces externos
   theme/       Paleta (tapete verde, botones rojo oscuro) y tema
   widgets/     Tapete, carta española, mazo, pista, controles, selector de
                palo, menú de ajustes y los carteles de victoria y
                clasificación
     paint/     Trazo vectorial de los 4 palos y de las 3 figuras
-  screens/     Menú, catálogo de modos y mesa de juego
+  screens/     Menú, catálogo de modos, personalizar y mesa de juego
 ```
 
 `LogicaJuego` no sabe nada de las modalidades: solo acepta qué palos

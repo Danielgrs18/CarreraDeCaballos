@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_theme.dart';
+import '../game/ajustes_app.dart';
 
-/// Fondo de tapete verde: degradado radial, trama fina de fieltro y viñeteado
-/// en los bordes.
+/// Fondo de tapete: degradado radial del color elegido en Personalizar,
+/// con una trama fina de fieltro encima.
 class Tapete extends StatelessWidget {
   final Widget child;
 
@@ -11,17 +11,24 @@ class Tapete extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Escucha por su cuenta en vez de esperar a que alguien de arriba se
+    // reconstruya: el tapete se monta en sitios que son const.
+    return ListenableBuilder(
+      listenable: ajustesApp,
+      builder: (context, _) => _fondo(),
+    );
+  }
+
+  Widget _fondo() {
+    final pano = ajustesApp.pano;
+
     return DecoratedBox(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: RadialGradient(
-          center: Alignment(0, -0.15),
+          center: const Alignment(0, -0.15),
           radius: 1.0,
-          colors: [
-            AppColors.tapeteClaro,
-            AppColors.tapete,
-            AppColors.tapeteOscuro,
-          ],
-          stops: [0.0, 0.55, 1.0],
+          colors: [pano.claro, pano.medio, pano.oscuro],
+          stops: const [0.0, 0.55, 1.0],
         ),
       ),
       // La trama va en su propia capa: si compartiera capa con el tablero se

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../game/ajustes_app.dart';
+import '../game/enlaces.dart';
 import '../theme/app_theme.dart';
 
 /// El botón de menú de la esquina superior derecha, el mismo en todas las
@@ -55,10 +57,7 @@ class _Panel extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 400),
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
         decoration: BoxDecoration(
-          gradient: const RadialGradient(
-            radius: 1.2,
-            colors: [AppColors.tapeteClaro, AppColors.tapeteOscuro],
-          ),
+          gradient: ajustesApp.pano.gradientePanel,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: AppColors.oro, width: 2),
           boxShadow: const [
@@ -142,6 +141,19 @@ class _DialogoMenu extends StatelessWidget {
                 builder: (_) => const _DialogoReglas(),
               ),
             ),
+            // Solo si hay a dónde ir: más vale no enseñarla que enseñar
+            // una entrada de apoyo que no lleva a ninguna parte.
+            if (Enlaces.hayDonacion)
+              _Entrada(
+                titulo: 'Apoyar el proyecto',
+                icono: Icons.favorite_rounded,
+                onTap: () => _abrirEnlace(Enlaces.donacion),
+              ),
+            _Entrada(
+              titulo: 'Código fuente',
+              icono: Icons.code_rounded,
+              onTap: () => _abrirEnlace(Enlaces.codigo),
+            ),
           ],
         ),
         acciones: [
@@ -152,6 +164,20 @@ class _DialogoMenu extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Abre una dirección fuera de la app: en la web, en otra pestaña. Si el
+/// sistema no sabe abrirla no pasa nada más: no se tumba el menú por no
+/// poder enseñar una página.
+Future<void> _abrirEnlace(String direccion) async {
+  try {
+    await launchUrl(
+      Uri.parse(direccion),
+      mode: LaunchMode.externalApplication,
+    );
+  } catch (_) {
+    // Sin navegador que la atienda, o dirección mal formada.
   }
 }
 

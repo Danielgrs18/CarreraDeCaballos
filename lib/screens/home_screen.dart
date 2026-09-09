@@ -10,6 +10,7 @@ import '../widgets/menu_app.dart';
 import '../widgets/tapete.dart';
 import 'game_screen.dart';
 import 'modos_juego_screen.dart';
+import 'personalizar_screen.dart';
 
 /// Menú principal.
 class HomeScreen extends StatefulWidget {
@@ -42,15 +43,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) _restaurarVertical();
   }
 
-  void _desbloquearMas() {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          content: Text('Próximamente'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+  Future<void> _personalizar() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const PersonalizarScreen()),
+    );
   }
 
   Future<void> _modosJuego() async {
@@ -120,9 +116,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 16),
                 _BotonMenu(
-                  texto: 'Desbloquear más',
+                  texto: 'Personalizar',
                   secundario: true,
-                  onPressed: _desbloquearMas,
+                  onPressed: _personalizar,
                 ),
               ],
             ),

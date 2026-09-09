@@ -7,6 +7,8 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:carrera_caballos/main.dart';
+import 'package:carrera_caballos/game/ajustes_app.dart';
+import 'package:carrera_caballos/game/cosmeticos.dart';
 import 'package:carrera_caballos/game/logica_juego.dart';
 import 'package:carrera_caballos/models/carta.dart';
 import 'package:carrera_caballos/theme/app_theme.dart';
@@ -507,6 +509,45 @@ void main() {
     await expectLater(
       find.byType(MaterialApp),
       matchesGoldenFile('capturas/reglas.png'),
+    );
+  });
+
+  testWidgets('personalizar: paños y dorsos', (tester) async {
+    await _lienzo(tester, const Size(420, 860));
+
+    await tester.pumpWidget(const CarreraCaballosApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Personalizar'));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('capturas/personalizar.png'),
+    );
+  });
+
+  testWidgets('mesa con otro paño y otro dorso', (tester) async {
+    await _lienzo(tester, const Size(880, 420));
+    addTearDown(ajustesApp.reiniciar);
+
+    ajustesApp.pano = PanoTapete.burdeos;
+    ajustesApp.dorso = DorsoBaraja.ebano;
+
+    await tester.pumpWidget(const CarreraCaballosApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Partida rápida'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Comenzar'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    for (var i = 0; i < 12; i++) {
+      await tester.tap(find.bySemanticsLabel('Sacar carta del mazo').first);
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('capturas/mesa_burdeos.png'),
     );
   });
 }

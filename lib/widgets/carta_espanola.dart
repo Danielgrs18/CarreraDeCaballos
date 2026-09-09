@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../game/ajustes_app.dart';
+import '../game/cosmeticos.dart';
 import '../models/carta.dart';
 import '../theme/app_theme.dart';
 import 'paint/figuras.dart';
@@ -48,20 +50,36 @@ class CartaEspanola extends StatelessWidget {
 class DorsoCarta extends StatelessWidget {
   final double ancho;
 
-  const DorsoCarta({super.key, required this.ancho});
+  /// Fuerza un dorso concreto en lugar del que esté elegido. Solo lo usa
+  /// la pantalla de Personalizar, para enseñar los que hay donde elegir.
+  final DorsoBaraja? dorso;
 
-  @override
-  Widget build(BuildContext context) {
+  const DorsoCarta({super.key, required this.ancho, this.dorso});
+
+  Widget _pintar(DorsoBaraja dorso) {
     return RepaintBoundary(
       child: SizedBox(
         width: ancho,
         height: altoCarta(ancho),
-        child: const CustomPaint(
-          painter: _DorsoPainter(),
+        child: CustomPaint(
+          painter: _DorsoPainter(dorso),
           isComplex: true,
           willChange: false,
         ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final forzado = dorso;
+    if (forzado != null) return _pintar(forzado);
+
+    // Como el tapete: escucha por su cuenta, porque hay dorsos montados
+    // desde sitios const que no se reconstruirían solos.
+    return ListenableBuilder(
+      listenable: ajustesApp,
+      builder: (context, _) => _pintar(ajustesApp.dorso),
     );
   }
 }
@@ -406,7 +424,9 @@ class _CaraPainter extends CustomPainter {
 }
 
 class _DorsoPainter extends CustomPainter {
-  const _DorsoPainter();
+  final DorsoBaraja dorso;
+
+  const _DorsoPainter(this.dorso);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -421,10 +441,10 @@ class _DorsoPainter extends CustomPainter {
       ..drawRRect(
         cuerpo,
         Paint()
-          ..shader = const LinearGradient(
+          ..shader = LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [AppColors.rojoClaro, AppColors.rojo, AppColors.rojoOscuro],
+            colors: [dorso.claro, dorso.medio, dorso.oscuro],
           ).createShader(Offset.zero & size),
       )
       ..drawRRect(
@@ -468,7 +488,7 @@ class _DorsoPainter extends CustomPainter {
     final centro = Offset(w / 2, h / 2);
     final r = w * 0.24;
     canvas
-      ..drawCircle(centro, r, Paint()..color = AppColors.rojoOscuro)
+      ..drawCircle(centro, r, Paint()..color = dorso.oscuro)
       ..drawCircle(
         centro,
         r,
@@ -503,5 +523,6 @@ class _DorsoPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_DorsoPainter oldDelegate) => false;
+  bool shouldRepaint(_DorsoPainter oldDelegate) =>
+      oldDelegate.dorso != dorso;
 }

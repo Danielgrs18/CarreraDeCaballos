@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../game/ajustes_app.dart';
 import '../theme/app_theme.dart';
 
 /// El velo oscuro con el recuadro dorado que se echa encima de la mesa al
@@ -65,10 +66,7 @@ class _CartelFlotanteState extends State<CartelFlotante>
               margin: const EdgeInsets.all(16),
               padding: widget.padding,
               decoration: BoxDecoration(
-                gradient: const RadialGradient(
-                  radius: 1.1,
-                  colors: [AppColors.tapeteClaro, AppColors.tapeteOscuro],
-                ),
+                gradient: ajustesApp.pano.gradientePanel,
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(color: AppColors.oro, width: 2.5),
                 boxShadow: [

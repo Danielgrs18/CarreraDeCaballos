@@ -667,10 +667,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             margin: const EdgeInsets.symmetric(horizontal: 16),
             padding: const EdgeInsets.fromLTRB(30, 16, 30, 18),
             decoration: BoxDecoration(
-              gradient: const RadialGradient(
-                radius: 1.2,
-                colors: [AppColors.tapeteClaro, AppColors.tapeteOscuro],
-              ),
+              gradient: ajustesApp.pano.gradientePanel,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: AppColors.oro, width: 2),
               boxShadow: const [

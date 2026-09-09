@@ -57,9 +57,15 @@ void main() {
     await tester.tap(find.text('Modos de juego'));
     await tester.pumpAndSettle();
 
-    expect(find.text('1 contra 1'), findsOneWidget);
-    expect(find.text('Campeonato'), findsOneWidget);
-    expect(find.text('Partida personalizada'), findsOneWidget);
+    // De menos a más: la carrera suelta, la configurable y la que encadena
+    // varias rondas. El orden se comprueba por dónde cae cada una.
+    const orden = ['1 contra 1', 'Partida personalizada', 'Campeonato'];
+    final alturas = <double>[];
+    for (final modo in orden) {
+      expect(find.text(modo), findsOneWidget);
+      alturas.add(tester.getTopLeft(find.text(modo)).dy);
+    }
+    expect(alturas, orderedEquals(<double>[...alturas]..sort()));
 
     // Ya no queda ninguno pendiente de estrenar.
     expect(find.text('Pronto'), findsNothing);

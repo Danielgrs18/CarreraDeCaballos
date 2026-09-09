@@ -41,16 +41,16 @@ const _modos = <_ModoDisponible>[
     pantalla: _abrirUnoVsUno,
   ),
   _ModoDisponible(
-    titulo: 'Campeonato',
-    descripcion: 'Varias carreras seguidas: puntúan todos los que llegan',
-    icono: Icons.emoji_events_rounded,
-    pantalla: _abrirCampeonato,
-  ),
-  _ModoDisponible(
     titulo: 'Partida personalizada',
     descripcion: 'Elige el largo de la pista y quién juega con cada palo',
     icono: Icons.tune_rounded,
     pantalla: _abrirPersonalizada,
+  ),
+  _ModoDisponible(
+    titulo: 'Campeonato',
+    descripcion: 'Varias carreras seguidas: puntúan todos los que llegan',
+    icono: Icons.emoji_events_rounded,
+    pantalla: _abrirCampeonato,
   ),
 ];
 

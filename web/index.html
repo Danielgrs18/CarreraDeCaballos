@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -18,7 +18,30 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Carrera de caballos con baraja española: partida rápida y 1 contra 1, para jugar en el navegador.">
+  <meta name="description" content="Carrera de caballos con baraja española, gratis y sin registro: partida rápida, 1 contra 1, partida personalizada y campeonato por rondas.">
+
+  <!--
+    Tarjeta para cuando alguien pega el enlace en WhatsApp, Telegram o redes:
+    sin esto sale la dirección pelada y nadie la abre.
+
+    OJO: og:url y og:image tienen que ser direcciones absolutas, así que
+    llevan el dominio escrito. Si algún día se pone dominio propio, hay que
+    cambiarlas aquí (y en nada más).
+  -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Carrera de Caballos">
+  <meta property="og:locale" content="es_ES">
+  <meta property="og:title" content="Carrera de Caballos — baraja española">
+  <meta property="og:description" content="Echa una carrera de caballos con la baraja española. Gratis, sin registro y desde el navegador.">
+  <meta property="og:url" content="https://danielgrs18.github.io/CarreraDeCaballos/">
+  <meta property="og:image" content="https://danielgrs18.github.io/CarreraDeCaballos/social.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Los cuatro caballos de la baraja española en abanico sobre un tapete verde">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="canonical" href="https://danielgrs18.github.io/CarreraDeCaballos/">
+  <meta name="theme-color" content="#0E5A38">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -29,10 +52,59 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>Carrera de Caballos</title>
+  <title>Carrera de Caballos — el juego de la baraja española</title>
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <!--
+    El juego se dibuja sobre un lienzo, así que para un buscador la página
+    está vacía por dentro. Esto es lo único con texto de verdad que puede
+    leer, y de paso explica qué es esto a quien llegue con JavaScript
+    desactivado.
+  -->
+  <noscript>
+    <main style="max-width:42rem;margin:0 auto;padding:2rem 1.25rem;font-family:Georgia,'Times New Roman',serif;color:#F2DFA8;background:#0E5A38;">
+      <h1>Carrera de Caballos</h1>
+      <p>
+        El juego de la carrera de caballos con la baraja española, para jugar
+        en el navegador. Es gratis, no hace falta registrarse y no guarda
+        ningún dato personal.
+      </p>
+      <p><strong>Necesitas activar JavaScript para jugar.</strong></p>
+
+      <h2>Cómo se juega</h2>
+      <ol>
+        <li>Los cuatro caballos —el 11 de cada palo: oros, copas, espadas y
+          bastos— salen de la baraja y se ponen en la línea de salida.</li>
+        <li>Con las cartas restantes se tienden unas cuantas boca abajo, que
+          son los pasos de la pista. El resto forma el mazo.</li>
+        <li>Cada carta que se destapa hace avanzar una casilla al caballo de
+          su palo.</li>
+        <li>En cuanto todos los caballos dejan atrás un paso, su carta se
+          levanta y el caballo de ese palo retrocede una casilla.</li>
+        <li>Gana el primero en cruzar la meta, un paso más allá de la última
+          carta de la pista.</li>
+      </ol>
+
+      <h2>Modos de juego</h2>
+      <ul>
+        <li><strong>Partida rápida</strong>: los cuatro caballos, pista de
+          largo fijo.</li>
+        <li><strong>1 contra 1</strong>: solo dos palos, uno por jugador.</li>
+        <li><strong>Partida personalizada</strong>: eliges el largo de la
+          pista y quién juega con cada palo.</li>
+        <li><strong>Campeonato</strong>: varias carreras seguidas repartiendo
+          puntos; gana quien más sume.</li>
+      </ul>
+
+      <p>
+        Las cartas se dibujan una a una con las pintas tradicionales de la
+        baraja española. Se puede jugar a mano, destapando cada carta, o en
+        automático con tres velocidades.
+      </p>
+    </main>
+  </noscript>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

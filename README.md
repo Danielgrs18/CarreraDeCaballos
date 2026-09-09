@@ -145,6 +145,29 @@ Para revisar el diseño a ojo se pueden regenerar las capturas de
 flutter test --run-skipped test/capturas_golden_test.dart --update-goldens
 ```
 
+## Cómo se comparte
+
+El juego se dibuja sobre un lienzo, así que por dentro la página está vacía
+para un buscador. Lo que sí puede leer vive en `web/index.html`:
+
+- La **descripción** y el `<title>`, con los cuatro modos.
+- Un `<noscript>` con las reglas y los modos en texto de verdad, que
+  además explica la situación a quien llegue con JavaScript desactivado.
+- La **tarjeta de OpenGraph**, que es lo que hace que al pegar el enlace en
+  WhatsApp salga la portada en vez de una dirección pelada.
+
+La portada la genera `tool/generar_social.dart` con los widgets de la app
+—el tapete y las cartas vectoriales—, así que no se puede desincronizar
+del juego:
+
+```bash
+flutter test tool/generar_social.dart   # escribe web/social.png (1200x630)
+```
+
+`og:url` y `og:image` tienen que ser absolutas, así que llevan el dominio
+escrito en el HTML. **Si algún día se pone dominio propio, hay que
+cambiarlas ahí** (y en el `canonical`); no hay más sitios donde toquen.
+
 ## Publicación
 
 - **Android**: `flutter build apk --release` (firma con las claves de

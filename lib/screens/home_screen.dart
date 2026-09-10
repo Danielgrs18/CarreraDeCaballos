@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../game/sonido.dart';
 import '../models/carta.dart';
 import '../theme/app_theme.dart';
 import '../widgets/carta_espanola.dart';
@@ -25,6 +26,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _restaurarVertical();
+    // Los menús llevan música; el catálogo y personalizar se apoyan encima
+    // de esta pantalla, así que les sigue sonando sin hacer nada.
+    sonido.ambientar(Musica.ambiente);
   }
 
   /// El menú se ve en vertical; la carrera gira a horizontal por su cuenta.
@@ -42,6 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     if (mounted) _restaurarVertical();
   }
+
 
   Future<void> _personalizar() async {
     await Navigator.of(context).push(

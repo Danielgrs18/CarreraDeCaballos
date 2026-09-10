@@ -112,9 +112,7 @@ class _DialogoMenu extends StatelessWidget {
               icono: ajustesApp.silencio
                   ? Icons.volume_off_rounded
                   : Icons.volume_up_rounded,
-              // Se dice a las claras: el ajuste se guarda, pero de momento
-              // no hay nada que callar.
-              nota: 'Aún no hay efectos de sonido que callar',
+              nota: 'La música y el barajeo de las cartas',
               valor: ajustesApp.silencio,
               onCambio: (valor) => ajustesApp.silencio = valor,
             ),

@@ -2,6 +2,7 @@ import 'package:carrera_caballos/game/ajustes_app.dart';
 import 'package:carrera_caballos/game/ajustes_partida.dart';
 import 'package:carrera_caballos/game/cosmeticos.dart';
 import 'package:carrera_caballos/game/enlaces.dart';
+import 'package:carrera_caballos/game/sonido.dart';
 import 'package:carrera_caballos/main.dart';
 import 'package:carrera_caballos/screens/game_screen.dart';
 import 'package:carrera_caballos/widgets/pista.dart';
@@ -35,11 +36,17 @@ int _cartasEnMazo(WidgetTester tester) => tester
     .cartasEnMazo;
 
 void main() {
-  setUpAll(() => SharedPreferences.setMockInitialValues({}));
+  setUpAll(() {
+    SharedPreferences.setMockInitialValues({});
+    // Sin plugin de audio detrás: se apaga de raíz para que no lluevan
+    // MissingPluginException por caminos asíncronos.
+    Sonido.desactivado = true;
+  });
 
   // Los ajustes son un único objeto compartido que sobrevive a todos los
   // tests: sin esto, el que toca un interruptor se lo deja puesto al resto.
   setUp(ajustesApp.reiniciar);
+  setUp(sonido.reiniciar);
 
   testWidgets(
       'el menú ofrece partida rápida, modos de juego y personalizar',
@@ -796,6 +803,38 @@ void main() {
     });
   });
 
+  group('Sonido', () {
+    testWidgets('callado hasta que el usuario toca la página',
+        (tester) async {
+      await tester.pumpWidget(const CarreraCaballosApp());
+
+      // Los navegadores no dejan sonar nada sin un gesto previo, así que
+      // ni se intenta: se espera.
+      expect(sonido.puedeSonar, isFalse);
+
+      await tester.tap(find.text('Partida rápida'));
+      await tester.pumpAndSettle();
+      expect(sonido.puedeSonar, isTrue);
+    });
+
+    testWidgets('silenciar desde el menú calla el sonido', (tester) async {
+      await tester.pumpWidget(const CarreraCaballosApp());
+      await tester.tap(find.byTooltip('Menú'));
+      await tester.pumpAndSettle();
+      expect(sonido.puedeSonar, isTrue);
+
+      await tester.tap(find.text('Silenciar'));
+      await tester.pumpAndSettle();
+      expect(ajustesApp.silencio, isTrue);
+      expect(sonido.puedeSonar, isFalse);
+
+      // Y al quitarlo vuelve a poder sonar, sin salir del menú.
+      await tester.tap(find.text('Silenciar'));
+      await tester.pumpAndSettle();
+      expect(sonido.puedeSonar, isTrue);
+    });
+  });
+
   group('Menú de la app', () {
     testWidgets('el botón está en la esquina de las tres pantallas',
         (tester) async {
@@ -820,11 +859,7 @@ void main() {
       expect(find.text('Silenciar'), findsOneWidget);
       expect(find.text('Vibración'), findsOneWidget);
       expect(find.text('Pantalla siempre encendida'), findsOneWidget);
-      // Se avisa de que el silencio todavía no tiene nada que callar.
-      expect(
-        find.text('Aún no hay efectos de sonido que callar'),
-        findsOneWidget,
-      );
+      expect(find.text('La música y el barajeo de las cartas'), findsOneWidget);
 
       expect(ajustesApp.vibracion, isTrue);
       await tester.tap(find.text('Vibración'));

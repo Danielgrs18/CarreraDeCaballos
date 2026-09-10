@@ -68,8 +68,7 @@ El botón de la esquina superior derecha abre el mismo menú en todas las
 pantallas. Lo que se elija se guarda y sigue puesto en el siguiente
 arranque:
 
-- **Silenciar**: todavía no hay efectos de sonido, y el menú lo dice; la
-  preferencia se guarda ya para cuando los haya.
+- **Silenciar**: calla la música y el barajeo, al momento.
 - **Vibración**: el toque al destapar carta a mano.
 - **Pantalla siempre encendida**: viene puesto, porque en automático es
   fácil dejar el móvil apoyado sin tocarlo. Apagarlo se nota al momento,
@@ -82,6 +81,39 @@ El enlace de apoyo vive en `lib/game/enlaces.dart` y **viene vacío a
 propósito**: hasta que no se pegue ahí una dirección propia, la entrada no
 aparece en el menú. No se deja ninguna de ejemplo porque un enlace de
 donación equivocado manda el dinero a otro sitio.
+
+## Sonido
+
+Tres piezas, y ninguna es un fichero descargado: se **sintetizan por
+código**, igual que las cartas se pintan por código. Ni licencias que
+respetar ni megas que bajar, y la melodía se retoca cambiando una tabla de
+notas.
+
+| Cuándo | Qué suena |
+|---|---|
+| Menús | Guitarra española en bucle: cadencia andaluza (Am-G-F-E) arpegiada, con cuerda pulsada por Karplus-Strong. |
+| Al empezar y al reciclar el mazo | Barajeo: dos riffles de ruido filtrado y el taco cuadrándose contra la mesa. |
+| Durante la carrera | La corneta de carreras sobre un galope, en bucle. Solo usa notas de la serie armónica, que es lo único que puede dar una corneta de verdad. |
+
+```bash
+dart run tool/generar_sonidos.dart   # escribe assets/audio/*.wav
+```
+
+Los bucles empalman metiendo la cola de las últimas notas por el principio,
+así que no hay corte al repetir.
+
+Dos cosas que condicionan el diseño:
+
+- **Los navegadores no dejan sonar nada** hasta que el usuario toca la
+  página. Por eso no se intenta hasta el primer gesto: se apunta lo que
+  debería sonar y arranca entonces. El `Listener` que lo detecta está en
+  `main.dart` y vale para toda la app.
+- **El sonido nunca puede tumbar la partida.** Si no hay plugin, ni
+  aparato, ni permiso, se sigue en silencio. En los tests se apaga de raíz
+  con `Sonido.desactivado`, porque los fallos del plugin llegan por caminos
+  asíncronos que no se pueden atrapar.
+
+El interruptor de *Silenciar* del menú ya calla de verdad, al momento.
 
 ## Personalizar
 
@@ -104,8 +136,8 @@ las cartas seguirían saliendo a ciegas por detrás del diálogo.
 lib/
   models/      Carta, Palo, Baraja, Caballo y Jugador
   game/        Reglas de la carrera (LogicaJuego), marcador del campeonato,
-               ajustes de la partida, ajustes generales, cosméticos y
-               enlaces externos
+               ajustes de la partida, ajustes generales, cosméticos,
+               sonido y enlaces externos
   theme/       Paleta (tapete verde, botones rojo oscuro) y tema
   widgets/     Tapete, carta española, mazo, pista, controles, selector de
                palo, menú de ajustes y los carteles de victoria y

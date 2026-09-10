@@ -8,6 +8,7 @@ import '../game/ajustes_app.dart';
 import '../game/ajustes_partida.dart';
 import '../game/campeonato.dart';
 import '../game/logica_juego.dart';
+import '../game/sonido.dart';
 import '../models/carta.dart';
 import '../models/jugador.dart';
 import '../theme/app_theme.dart';
@@ -98,6 +99,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     _logica = _nuevaPartida();
+    // En la mesa manda la carrera: la guitarra de los menús se calla.
+    sonido.ambientar(Musica.ninguna);
     ajustesApp.addListener(_ajustesCambiados);
     WidgetsBinding.instance.addObserver(this);
     // Pedida dentro de initState, la rotación se pierde en algunos móviles
@@ -115,6 +118,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     _reloj?.cancel();
+    sonido.ambientar(Musica.ambiente);
     ajustesApp.removeListener(_ajustesCambiados);
     WidgetsBinding.instance.removeObserver(this);
     _mantenerPantallaEncendida(false);
@@ -149,6 +153,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       }
     });
     _sincronizarReloj();
+    sonido.barajar();
+    sonido.ambientar(Musica.carrera);
     // En modo automático es fácil dejar el móvil apoyado sin tocarlo: que
     // la pantalla no se apague sola a media carrera.
     _mantenerPantallaEncendida(true);
@@ -165,6 +171,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final parar =
         resultado.agotada || (resultado.ganador != null && !_hastaElFinal);
 
+    // El mazo se ha acabado y se vuelven a barajar los descartes.
+    if (resultado.mazoReciclado) sonido.barajar();
+
     setState(() {
       _turno++;
       _destacado = resultado.avanza;
@@ -175,6 +184,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (parar) {
       _pararReloj();
       _mantenerPantallaEncendida(false);
+      // Con el cartel en pantalla, el galope de fondo sobraría.
+      sonido.ambientar(Musica.ninguna);
     }
   }
 
@@ -195,6 +206,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _fase = _Fase.corriendo;
       _aviso = null;
     });
+    sonido.ambientar(Musica.carrera);
     _sincronizarReloj();
     _mantenerPantallaEncendida(true);
   }
@@ -293,6 +305,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _aviso = null;
       _hastaElFinal = true;
     });
+    // Pista nueva: se barajan las cartas otra vez.
+    sonido.barajar();
+    sonido.ambientar(Musica.carrera);
     _sincronizarReloj();
     _mantenerPantallaEncendida(true);
   }

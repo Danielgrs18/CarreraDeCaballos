@@ -9,12 +9,16 @@ import 'dart:math';
 import 'package:carrera_caballos/main.dart';
 import 'package:carrera_caballos/game/ajustes_app.dart';
 import 'package:carrera_caballos/game/cosmeticos.dart';
+import 'package:carrera_caballos/game/ajustes_partida.dart';
 import 'package:carrera_caballos/game/logica_juego.dart';
+import 'package:carrera_caballos/game/sala.dart';
+import 'package:carrera_caballos/game/sonido.dart';
 import 'package:carrera_caballos/models/carta.dart';
 import 'package:carrera_caballos/theme/app_theme.dart';
 import 'package:carrera_caballos/widgets/carta_espanola.dart';
 import 'package:carrera_caballos/widgets/cartel_clasificacion.dart';
 import 'package:carrera_caballos/widgets/cartel_ganador.dart';
+import 'package:carrera_caballos/screens/game_screen.dart';
 import 'package:carrera_caballos/widgets/pista.dart';
 import 'package:carrera_caballos/widgets/tapete.dart';
 import 'package:flutter/material.dart';
@@ -43,7 +47,12 @@ Future<void> _lienzo(WidgetTester tester, Size tamano) async {
 }
 
 void main() {
-  setUpAll(_cargarSerif);
+  setUpAll(() async {
+    await _cargarSerif();
+    // Sin plugin de audio en los tests: se apaga de raíz, que si no llueven
+    // MissingPluginException desde los canales de audioplayers.
+    Sonido.desactivado = true;
+  });
 
   testWidgets('baraja completa', (tester) async {
     await _lienzo(tester, const Size(1000, 760));
@@ -548,6 +557,44 @@ void main() {
     await expectLater(
       find.byType(MaterialApp),
       matchesGoldenFile('capturas/mesa_burdeos.png'),
+    );
+  });
+
+  testWidgets('sala: crear y unirse', (tester) async {
+    await _lienzo(tester, const Size(420, 860));
+
+    await tester.pumpWidget(const CarreraCaballosApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Modos de juego'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sala con amigos'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Crear sala'));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('capturas/sala.png'),
+    );
+  });
+
+  testWidgets('sala: velo con el código a la vista', (tester) async {
+    await _lienzo(tester, const Size(880, 460));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.tema,
+        home: GameScreen(
+          modalidad: ModalidadPartida.sala,
+          sala: Sala.nueva(pasos: 7, random: Random(12)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('capturas/sala_velo.png'),
     );
   });
 }

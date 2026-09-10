@@ -1,7 +1,10 @@
+import 'dart:math';
+
 import 'package:carrera_caballos/game/ajustes_app.dart';
 import 'package:carrera_caballos/game/ajustes_partida.dart';
 import 'package:carrera_caballos/game/cosmeticos.dart';
 import 'package:carrera_caballos/game/enlaces.dart';
+import 'package:carrera_caballos/game/sala.dart';
 import 'package:carrera_caballos/game/sonido.dart';
 import 'package:carrera_caballos/main.dart';
 import 'package:carrera_caballos/screens/game_screen.dart';
@@ -28,6 +31,13 @@ int _pasos(WidgetTester tester) =>
 /// buscarlo por texto lo encontraría dos veces.
 String _nombreJugador(WidgetTester tester, int indice) =>
     tester.widget<TextField>(find.byType(TextField).at(indice)).controller!.text;
+
+/// La última carta destapada en la partida que hay en pantalla.
+String _ultimaCarta(WidgetTester tester) => tester
+    .widget<PistaWidget>(find.byType(PistaWidget))
+    .logica
+    .ultimaCarta
+    .toString();
 
 /// Cuántas cartas quedan por robar en la partida que hay en pantalla.
 int _cartasEnMazo(WidgetTester tester) => tester
@@ -800,6 +810,122 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('CAMPEONATO'), findsNothing);
       expect(find.text('Comenzar'), findsOneWidget);
+    });
+  });
+
+  group('Sala con amigos', () {
+    Future<void> abrir(WidgetTester tester) async {
+      await tester.pumpWidget(const CarreraCaballosApp());
+      await tester.tap(find.text('Modos de juego'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sala con amigos'));
+      await tester.pumpAndSettle();
+    }
+
+    /// El código que se enseña tras crear la sala.
+    String codigoEnPantalla(WidgetTester tester) {
+      final sala = tester
+          .widgetList<Text>(find.byType(Text))
+          .map((t) => t.data)
+          .firstWhere(
+            (t) => t != null && Sala.desdeCodigo(t) != null && t.length == 6,
+            orElse: () => null,
+          );
+      expect(sala, isNotNull, reason: 'no se ve ningún código de sala');
+      return sala!;
+    }
+
+    testWidgets('el catálogo lleva a crear o unirse', (tester) async {
+      await abrir(tester);
+
+      expect(find.text('Crear una sala'), findsOneWidget);
+      expect(find.text('Unirse a una sala'), findsOneWidget);
+      expect(find.text('Crear sala'), findsOneWidget);
+    });
+
+    testWidgets('crear una sala enseña un código válido', (tester) async {
+      await abrir(tester);
+      await tester.tap(find.text('Crear sala'));
+      await tester.pumpAndSettle();
+
+      final codigo = codigoEnPantalla(tester);
+      expect(codigo, hasLength(Sala.largoCodigo));
+      expect(Sala.desdeCodigo(codigo), isNotNull);
+      expect(find.text('Entrar a la sala'), findsOneWidget);
+
+      // Y entrar deja la mesa con esa carrera y el código a la vista.
+      await tester.tap(find.text('Entrar a la sala'));
+      await tester.pumpAndSettle();
+      expect(find.text(codigo), findsOneWidget);
+      expect(find.text('TU CABALLO'), findsOneWidget);
+      expect(_pasos(tester), Sala.desdeCodigo(codigo)!.pasos);
+    });
+
+    testWidgets('cambiar la pista invalida el código ya enseñado',
+        (tester) async {
+      await abrir(tester);
+      await tester.tap(find.text('Crear sala'));
+      await tester.pumpAndSettle();
+      expect(find.text('Entrar a la sala'), findsOneWidget);
+
+      // La carrera cambia con la pista: el código anterior ya no vale.
+      await tester.drag(find.byType(Slider), const Offset(-500, 0));
+      await tester.pumpAndSettle();
+      expect(find.text('Entrar a la sala'), findsNothing);
+      expect(find.text('Crear sala'), findsOneWidget);
+    });
+
+    testWidgets('un código inventado avisa en vez de colar', (tester) async {
+      await abrir(tester);
+
+      await tester.enterText(find.byType(TextField), 'XXX');
+      await tester.tap(find.text('Unirse'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Ese código no vale'), findsOneWidget);
+      // Se queda donde estaba.
+      expect(find.text('Unirse a una sala'), findsOneWidget);
+    });
+
+    testWidgets('unirse con el código de un amigo abre su misma carrera',
+        (tester) async {
+      final delAmigo = Sala.nueva(pasos: 9, random: Random(31));
+
+      await abrir(tester);
+      await tester.enterText(find.byType(TextField), delAmigo.codigo);
+      await tester.tap(find.text('Unirse'));
+      await tester.pumpAndSettle();
+
+      expect(find.text(delAmigo.codigo), findsOneWidget);
+      expect(_pasos(tester), 9);
+    });
+
+    testWidgets('dos móviles con el mismo código sacan la misma carta',
+        (tester) async {
+      final sala = Sala.nueva(pasos: 6, random: Random(64));
+
+      /// Entra a la sala y destapa tres cartas, como haría un amigo.
+      Future<String> jugar() async {
+        // Se desmonta lo anterior: la app es const, y volver a montarla sin
+        // más dejaría el árbol de la pasada previa tal cual estaba.
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+        await abrir(tester);
+        await tester.enterText(find.byType(TextField), sala.codigo);
+        await tester.tap(find.text('Unirse'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Comenzar'));
+        await tester.pump(const Duration(milliseconds: 300));
+
+        for (var i = 0; i < 3; i++) {
+          await tester.tap(find.bySemanticsLabel('Sacar carta del mazo').first);
+          await tester.pump(const Duration(milliseconds: 400));
+        }
+        return _ultimaCarta(tester);
+      }
+
+      // El mismo código, dos veces: es lo que verían dos amigos distintos.
+      expect(await jugar(), await jugar());
     });
   });
 

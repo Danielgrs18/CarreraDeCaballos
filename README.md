@@ -23,7 +23,8 @@ Pensado para Android, y también publicado como web en GitHub Pages.
 | Menú | `Partida rápida`, `Modos de juego` y `Personalizar`. |
 | Personalizar | El paño de la mesa y el dorso de la baraja, con una muestra que se actualiza al tocarlos. |
 | Ajustes | Detrás del botón de la esquina superior derecha, presente en todas las pantallas: silencio, vibración, pantalla siempre encendida y las reglas del juego. |
-| Modos de juego | Catálogo: `1 contra 1`, `Campeonato` y `Partida personalizada`. |
+| Modos de juego | Catálogo: `1 contra 1`, `Partida personalizada`, `Sala con amigos` y `Campeonato`. |
+| Sala con amigos | Crear una sala y compartir su código o su enlace, o unirse a la de otro. |
 | Mesa | En horizontal: barra de modo (`Manual` / `Automático` con tres velocidades), mazo y carta destapada, hilera de cartas de paso y los carriles de los caballos en carrera. Si la carrera va a seguir hasta el final, una columna a la derecha va cantando el puesto de cada uno. |
 | Victoria | El palo ganador en grande con su emblema, y los botones `Seguir hasta que lleguen todos`, `Revancha` (pista nueva, sin salir de la mesa) y `Finalizar`. |
 | Clasificación | El orden de llegada completo, con los rezagados al final. En el campeonato lleva además el marcador y el paso a la siguiente ronda. |
@@ -34,6 +35,37 @@ largo de la pista (de 2 a 12 pasos) y una lista de jugadores con nombre y
 palo —pueden repetir palo, y corren los 4 caballos igual—. Al terminar
 una personalizada, el cartel canta también los nombres de quienes iban al
 palo ganador.
+
+## Sala con amigos
+
+Varios amigos pueden ver **la misma carrera** desde sus propios móviles, y
+no hace falta servidor ni registro.
+
+El truco está en que la carrera está determinada por completo por la
+semilla y el largo de la pista: con esos dos números, dos dispositivos
+sacan las cartas en el mismo orden y llegan al mismo ganador. El código de
+sala no es más que esos dos números escritos para poder dictarlos.
+
+```
+   8K3M2P
+   │└────┴─ semilla (5 dígitos, 33 millones de salas)
+   └─ largo de la pista
+```
+
+Va en **base 32 de Crockford**: sin I, L, O ni U, que son las que se
+confunden al dictarlas. Al leer un código se perdona todo lo que se puede
+perdonar sin ambigüedad —minúsculas, espacios, guiones, y la I o la L por
+1 y la O por 0—, que es como la gente los copia a mano.
+
+Se comparte de dos formas: el código, para dictarlo, o el enlace
+`...?sala=8K3M2P`, que entra directo a la sala al abrirlo.
+
+Cada uno elige **su** caballo en su propio móvil. Lo que no se comparte es
+quién ha elegido qué: para eso haría falta un servidor. Lo que sí es igual
+para todos es la carrera y el ganador.
+
+Pedir otra carrera crea una **sala nueva**, con otro código que hay que
+volver a pasar: repetir la misma daría exactamente el mismo resultado.
 
 ## Seguir hasta que lleguen todos
 
@@ -136,14 +168,15 @@ las cartas seguirían saliendo a ciegas por detrás del diálogo.
 lib/
   models/      Carta, Palo, Baraja, Caballo y Jugador
   game/        Reglas de la carrera (LogicaJuego), marcador del campeonato,
-               ajustes de la partida, ajustes generales, cosméticos,
-               sonido y enlaces externos
+               salas compartidas, ajustes de la partida, ajustes generales,
+               cosméticos, sonido y enlaces externos
   theme/       Paleta (tapete verde, botones rojo oscuro) y tema
   widgets/     Tapete, carta española, mazo, pista, controles, selector de
                palo, menú de ajustes y los carteles de victoria y
                clasificación
     paint/     Trazo vectorial de los 4 palos y de las 3 figuras
-  screens/     Menú, catálogo de modos, personalizar y mesa de juego
+  screens/     Menú, catálogo de modos, personalizar, salas y mesa de
+               juego
 ```
 
 `LogicaJuego` no sabe nada de las modalidades: solo acepta qué palos

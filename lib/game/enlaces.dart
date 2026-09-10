@@ -16,5 +16,22 @@ class Enlaces {
   /// El repositorio, que es público.
   static const codigo = 'https://github.com/Danielgrs18/CarreraDeCaballos';
 
+  /// Dónde vive la web. Se usa para armar los enlaces de sala cuando no se
+  /// puede leer la dirección del navegador (móvil).
+  ///
+  /// OJO: si algún día se pone dominio propio hay que cambiarla aquí y en
+  /// las etiquetas OpenGraph de web/index.html.
+  static const web = 'https://danielgrs18.github.io/CarreraDeCaballos/';
+
+  /// La dirección de la que colgar un código de sala: la que se esté
+  /// mirando si estamos en el navegador, y la de la web si no.
+  static Uri get deLaWeb {
+    final actual = Uri.base;
+    if (actual.scheme == 'http' || actual.scheme == 'https') {
+      return actual.replace(queryParameters: {}, fragment: '');
+    }
+    return Uri.parse(web);
+  }
+
   static bool get hayDonacion => donacion.isNotEmpty;
 }

@@ -13,6 +13,10 @@ enum ModalidadPartida {
   /// Como la personalizada, pero encadenando varias carreras que reparten
   /// puntos: gana quien más sume al cabo de todas las rondas.
   campeonato,
+
+  /// Una carrera concreta, compartida por código con los amigos: todos ven
+  /// exactamente la misma desde su propio móvil.
+  sala,
 }
 
 extension ModalidadPartidaX on ModalidadPartida {
@@ -20,6 +24,10 @@ extension ModalidadPartidaX on ModalidadPartida {
   bool get tieneJugadores =>
       this == ModalidadPartida.personalizada ||
       this == ModalidadPartida.campeonato;
+
+  /// Los modos donde se configura una lista de jugadores en el velo. La
+  /// sala también tiene jugador, pero uno solo y elegido de otra manera.
+  bool get editaJugadores => tieneJugadores;
 
   /// En el campeonato hay que ver llegar a todos para poder puntuar, así
   /// que la carrera no se detiene con el primero.

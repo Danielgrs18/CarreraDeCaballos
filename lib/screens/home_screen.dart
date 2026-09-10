@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../game/ajustes_partida.dart';
+import '../game/sala.dart';
 import '../game/sonido.dart';
 import '../models/carta.dart';
 import '../theme/app_theme.dart';
@@ -29,6 +31,28 @@ class _HomeScreenState extends State<HomeScreen> {
     // Los menús llevan música; el catálogo y personalizar se apoyan encima
     // de esta pantalla, así que les sigue sonando sin hacer nada.
     sonido.ambientar(Musica.ambiente);
+    _abrirSalaDelEnlace();
+  }
+
+  /// Si se ha llegado con un ?sala=CODIGO en la dirección, se entra
+  /// directamente a esa sala en vez de quedarse en el menú.
+  void _abrirSalaDelEnlace() {
+    final codigo = Uri.base.queryParameters['sala'];
+    if (codigo == null) return;
+    final sala = Sala.desdeCodigo(codigo);
+    if (sala == null) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => GameScreen(
+            modalidad: ModalidadPartida.sala,
+            sala: sala,
+          ),
+        ),
+      );
+    });
   }
 
   /// El menú se ve en vertical; la carrera gira a horizontal por su cuenta.

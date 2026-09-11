@@ -20,11 +20,11 @@ Pensado para Android, y también publicado como web en GitHub Pages.
 
 | Pantalla | Contenido |
 |---|---|
-| Menú | `Partida rápida`, `Modos de juego` y `Personalizar`. |
+| Menú | `Partida rápida`, `Jugar con amigos`, `Modos de juego` y `Personalizar`. |
 | Personalizar | El paño de la mesa y el dorso de la baraja, con una muestra que se actualiza al tocarlos. |
 | Ajustes | Detrás del botón de la esquina superior derecha, presente en todas las pantallas: silencio, vibración, pantalla siempre encendida y las reglas del juego. |
-| Modos de juego | Catálogo: `1 contra 1`, `Partida personalizada`, `Sala con amigos` y `Campeonato`. |
-| Sala con amigos | Crear una sala y compartir su código o su enlace, o unirse a la de otro. |
+| Modos de juego | Catálogo: `1 contra 1`, `Partida personalizada` y `Campeonato`. |
+| Jugar con amigos | Elegir a qué se juega, crear la sala y compartir su código o su enlace, o unirse a la de otro. |
 | Mesa | En horizontal: barra de modo (`Manual` / `Automático` con tres velocidades), mazo y carta destapada, hilera de cartas de paso y los carriles de los caballos en carrera. Si la carrera va a seguir hasta el final, una columna a la derecha va cantando el puesto de cada uno. |
 | Victoria | El palo ganador en grande con su emblema, y los botones `Seguir hasta que lleguen todos`, `Revancha` (pista nueva, sin salir de la mesa) y `Finalizar`. |
 | Clasificación | El orden de llegada completo, con los rezagados al final. En el campeonato lleva además el marcador y el paso a la siguiente ronda. |
@@ -36,21 +36,26 @@ palo —pueden repetir palo, y corren los 4 caballos igual—. Al terminar
 una personalizada, el cartel canta también los nombres de quienes iban al
 palo ganador.
 
-## Sala con amigos
+## Jugar con amigos
 
-Varios amigos pueden ver **la misma carrera** desde sus propios móviles, y
-no hace falta servidor ni registro.
+Varios amigos pueden ver **la misma partida** desde sus propios móviles, y
+no hace falta servidor ni registro. Se entra desde el menú principal.
 
-El truco está en que la carrera está determinada por completo por la
-semilla y el largo de la pista: con esos dos números, dos dispositivos
-sacan las cartas en el mismo orden y llegan al mismo ganador. El código de
-sala no es más que esos dos números escritos para poder dictarlos.
+Primero se elige **a qué se juega** —cualquiera de los cuatro modos, con
+sus ajustes— y eso, junto con la semilla, va dentro del código. Con esos
+datos dos dispositivos sacan las cartas en el mismo orden y llegan al
+mismo ganador.
 
 ```
-   8K3M2P
-   │└────┴─ semilla (5 dígitos, 33 millones de salas)
-   └─ largo de la pista
+   36359J7D
+   ││└─────┴─ semilla (33 millones por configuración)
+   │└─ largo de la pista
+   └─ a qué se juega
 ```
+
+El tercer dígito cambia de significado según el modo: en el 1 contra 1
+guarda qué dos palos corren; en el campeonato, cuántas rondas. Los demás
+no lo usan, y si viene con algo el código se rechaza.
 
 Va en **base 32 de Crockford**: sin I, L, O ni U, que son las que se
 confunden al dictarlas. Al leer un código se perdona todo lo que se puede
@@ -58,14 +63,21 @@ perdonar sin ambigüedad —minúsculas, espacios, guiones, y la I o la L por
 1 y la O por 0—, que es como la gente los copia a mano.
 
 Se comparte de dos formas: el código, para dictarlo, o el enlace
-`...?sala=8K3M2P`, que entra directo a la sala al abrirlo.
+`...?sala=36359J7D`, que entra directo a la sala al abrirlo.
 
-Cada uno elige **su** caballo en su propio móvil. Lo que no se comparte es
-quién ha elegido qué: para eso haría falta un servidor. Lo que sí es igual
-para todos es la carrera y el ganador.
+Ya dentro, **cada uno pone su nombre y elige su palo** en su propio móvil,
+en una fila igual que las de la partida personalizada. Al acabar, el
+cartel canta el nombre de quien iba al palo ganador.
 
-Pedir otra carrera crea una **sala nueva**, con otro código que hay que
+En el campeonato cada ronda lleva su propia semilla, derivada de la de la
+sala: son carreras distintas entre sí pero iguales para todos.
+
+Pedir otra partida crea una **sala nueva**, con otro código que hay que
 volver a pasar: repetir la misma daría exactamente el mismo resultado.
+
+**Lo que no se comparte** es quién se ha unido ni qué palo ha elegido cada
+uno: para eso haría falta un servidor. Lo que sí es igual para todos es la
+partida y el ganador.
 
 ## Seguir hasta que lleguen todos
 

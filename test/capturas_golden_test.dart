@@ -560,14 +560,14 @@ void main() {
     );
   });
 
-  testWidgets('sala: crear y unirse', (tester) async {
-    await _lienzo(tester, const Size(420, 860));
+  testWidgets('sala: elegir modo y crear', (tester) async {
+    await _lienzo(tester, const Size(430, 980));
 
     await tester.pumpWidget(const CarreraCaballosApp());
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Modos de juego'));
+    await tester.tap(find.text('Jugar con amigos'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Sala con amigos'));
+    await tester.tap(find.text('Campeonato'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Crear sala'));
     await tester.pumpAndSettle();
@@ -585,8 +585,12 @@ void main() {
       MaterialApp(
         theme: AppTheme.tema,
         home: GameScreen(
-          modalidad: ModalidadPartida.sala,
-          sala: Sala.nueva(pasos: 7, random: Random(12)),
+          modalidad: ModalidadPartida.personalizada,
+          sala: Sala.nueva(
+            modalidad: ModalidadPartida.personalizada,
+            pasos: 7,
+            random: Random(12),
+          ),
         ),
       ),
     );

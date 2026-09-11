@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../game/ajustes_partida.dart';
 import '../game/sala.dart';
 import '../game/sonido.dart';
 import '../models/carta.dart';
@@ -14,6 +13,7 @@ import '../widgets/tapete.dart';
 import 'game_screen.dart';
 import 'modos_juego_screen.dart';
 import 'personalizar_screen.dart';
+import 'sala_screen.dart';
 
 /// Menú principal.
 class HomeScreen extends StatefulWidget {
@@ -47,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => GameScreen(
-            modalidad: ModalidadPartida.sala,
+            modalidad: sala.modalidad,
             sala: sala,
           ),
         ),
@@ -75,6 +75,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _personalizar() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => const PersonalizarScreen()),
+    );
+  }
+
+  Future<void> _salaConAmigos() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const SalaScreen()),
     );
   }
 
@@ -136,6 +142,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 _BotonMenu(
                   texto: 'Partida rápida',
                   onPressed: _partidaRapida,
+                ),
+                const SizedBox(height: 16),
+                _BotonMenu(
+                  texto: 'Jugar con amigos',
+                  secundario: true,
+                  onPressed: _salaConAmigos,
                 ),
                 const SizedBox(height: 16),
                 _BotonMenu(

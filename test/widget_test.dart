@@ -4,11 +4,13 @@ import 'package:carrera_caballos/game/ajustes_app.dart';
 import 'package:carrera_caballos/game/ajustes_partida.dart';
 import 'package:carrera_caballos/game/cosmeticos.dart';
 import 'package:carrera_caballos/game/enlaces.dart';
+import 'package:carrera_caballos/game/logica_juego.dart';
 import 'package:carrera_caballos/game/sala.dart';
 import 'package:carrera_caballos/game/sonido.dart';
 import 'package:carrera_caballos/main.dart';
 import 'package:carrera_caballos/screens/game_screen.dart';
 import 'package:carrera_caballos/widgets/pista.dart';
+import 'package:carrera_caballos/widgets/selector_palo.dart';
 import 'package:carrera_caballos/widgets/tapete.dart';
 import 'package:carrera_caballos/widgets/carta_espanola.dart';
 import 'package:carrera_caballos/widgets/cartel_ganador.dart';
@@ -815,60 +817,117 @@ void main() {
 
   group('Sala con amigos', () {
     Future<void> abrir(WidgetTester tester) async {
+      // Un lienzo alto: la pantalla de salas lleva los cuatro modos, sus
+      // ajustes y el bloque de unirse, y en el tamaño de prueba por defecto
+      // la mitad se quedaría sin construir por debajo del pliegue.
+      tester.view.physicalSize = const Size(900, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
       await tester.pumpWidget(const CarreraCaballosApp());
-      await tester.tap(find.text('Modos de juego'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Sala con amigos'));
+      await tester.tap(find.text('Jugar con amigos'));
       await tester.pumpAndSettle();
     }
 
-    /// El código que se enseña tras crear la sala.
-    String codigoEnPantalla(WidgetTester tester) {
-      final sala = tester
+    /// La sala cuyo código se está enseñando en pantalla.
+    Sala salaEnPantalla(WidgetTester tester) {
+      final texto = tester
           .widgetList<Text>(find.byType(Text))
           .map((t) => t.data)
           .firstWhere(
-            (t) => t != null && Sala.desdeCodigo(t) != null && t.length == 6,
+            (t) =>
+                t != null &&
+                t.length == Sala.largoCodigo &&
+                Sala.desdeCodigo(t) != null,
             orElse: () => null,
           );
-      expect(sala, isNotNull, reason: 'no se ve ningún código de sala');
-      return sala!;
+      expect(texto, isNotNull, reason: 'no se ve ningún código de sala');
+      return Sala.desdeCodigo(texto!)!;
     }
 
-    testWidgets('el catálogo lleva a crear o unirse', (tester) async {
+    Future<Sala> crearCon(WidgetTester tester, String modo) async {
       await abrir(tester);
+      await tester.tap(find.text(modo));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Crear sala'));
+      await tester.pumpAndSettle();
+      return salaEnPantalla(tester);
+    }
 
+    testWidgets('se entra desde el menú principal, no desde el catálogo',
+        (tester) async {
+      tester.view.physicalSize = const Size(900, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(const CarreraCaballosApp());
+      expect(find.text('Jugar con amigos'), findsOneWidget);
+
+      await tester.tap(find.text('Modos de juego'));
+      await tester.pumpAndSettle();
+      expect(find.text('Sala con amigos'), findsNothing);
+
+      await tester.tap(find.byTooltip('Volver'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Jugar con amigos'));
+      await tester.pumpAndSettle();
       expect(find.text('Crear una sala'), findsOneWidget);
       expect(find.text('Unirse a una sala'), findsOneWidget);
-      expect(find.text('Crear sala'), findsOneWidget);
     });
 
-    testWidgets('crear una sala enseña un código válido', (tester) async {
+    testWidgets('antes de crear se elige a qué se juega', (tester) async {
       await abrir(tester);
-      await tester.tap(find.text('Crear sala'));
-      await tester.pumpAndSettle();
 
-      final codigo = codigoEnPantalla(tester);
-      expect(codigo, hasLength(Sala.largoCodigo));
-      expect(Sala.desdeCodigo(codigo), isNotNull);
-      expect(find.text('Entrar a la sala'), findsOneWidget);
+      for (final modo in [
+        'Partida rápida',
+        '1 contra 1',
+        'Partida personalizada',
+        'Campeonato',
+      ]) {
+        expect(find.text(modo), findsOneWidget);
+      }
 
-      // Y entrar deja la mesa con esa carrera y el código a la vista.
-      await tester.tap(find.text('Entrar a la sala'));
+      // La rápida no deja configurar nada; la personalizada, la pista.
+      expect(find.byType(Slider), findsNothing);
+      await tester.tap(find.text('Partida personalizada'));
       await tester.pumpAndSettle();
-      expect(find.text(codigo), findsOneWidget);
-      expect(find.text('TU CABALLO'), findsOneWidget);
-      expect(_pasos(tester), Sala.desdeCodigo(codigo)!.pasos);
+      expect(find.byType(Slider), findsOneWidget);
+
+      // El campeonato añade las rondas.
+      await tester.tap(find.text('Campeonato'));
+      await tester.pumpAndSettle();
+      expect(find.byType(Slider), findsNWidgets(2));
+
+      // Y el 1 contra 1, los dos palos en vez de regletas.
+      await tester.tap(find.text('1 contra 1'));
+      await tester.pumpAndSettle();
+      expect(find.byType(Slider), findsNothing);
+      expect(find.byType(SelectorPalo), findsNWidgets(2));
     });
 
-    testWidgets('cambiar la pista invalida el código ya enseñado',
+    testWidgets('el modo elegido viaja dentro del código', (tester) async {
+      expect(
+        (await crearCon(tester, 'Partida rápida')).modalidad,
+        ModalidadPartida.rapida,
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+      expect(
+        (await crearCon(tester, 'Campeonato')).modalidad,
+        ModalidadPartida.campeonato,
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+      expect(
+        (await crearCon(tester, '1 contra 1')).modalidad,
+        ModalidadPartida.unoContraUno,
+      );
+    });
+
+    testWidgets('cambiar los ajustes invalida el código ya enseñado',
         (tester) async {
-      await abrir(tester);
-      await tester.tap(find.text('Crear sala'));
-      await tester.pumpAndSettle();
+      await crearCon(tester, 'Partida personalizada');
       expect(find.text('Entrar a la sala'), findsOneWidget);
 
-      // La carrera cambia con la pista: el código anterior ya no vale.
+      // La partida cambia con la pista: el código anterior ya no vale.
       await tester.drag(find.byType(Slider), const Offset(-500, 0));
       await tester.pumpAndSettle();
       expect(find.text('Entrar a la sala'), findsNothing);
@@ -883,13 +942,17 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Ese código no vale'), findsOneWidget);
-      // Se queda donde estaba.
       expect(find.text('Unirse a una sala'), findsOneWidget);
     });
 
-    testWidgets('unirse con el código de un amigo abre su misma carrera',
+    testWidgets('unirse abre la partida del amigo, con su modo y su mesa',
         (tester) async {
-      final delAmigo = Sala.nueva(pasos: 9, random: Random(31));
+      final delAmigo = Sala.nueva(
+        modalidad: ModalidadPartida.campeonato,
+        pasos: 9,
+        rondas: 4,
+        random: Random(31),
+      );
 
       await abrir(tester);
       await tester.enterText(find.byType(TextField), delAmigo.codigo);
@@ -897,7 +960,65 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text(delAmigo.codigo), findsOneWidget);
+      // La mesa la monta el código: pista de 9 y campeonato, sin que el
+      // invitado haya tenido que configurar nada.
       expect(_pasos(tester), 9);
+      expect(find.textContaining('Campeonato'), findsOneWidget);
+
+      // Y al arrancar, el campeonato va por sus cuatro rondas.
+      await tester.tap(find.text('Comenzar'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Ronda 1 de 4'), findsOneWidget);
+    });
+
+    testWidgets('en la sala cada uno pone su nombre y su palo',
+        (tester) async {
+      final sala = Sala.nueva(random: Random(77));
+
+      await abrir(tester);
+      await tester.enterText(find.byType(TextField), sala.codigo);
+      await tester.tap(find.text('Unirse'));
+      await tester.pumpAndSettle();
+
+      // Una fila de jugador como la de la partida personalizada.
+      expect(find.text('TU JUGADOR'), findsOneWidget);
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.byType(DropdownButton<Palo>), findsOneWidget);
+      expect(_nombreJugador(tester, 0), 'Tú');
+    });
+
+    testWidgets('el cartel canta tu nombre si gana tu palo', (tester) async {
+      final sala = Sala.nueva(random: Random(123));
+      // Se juega por dentro para saber de antemano qué palo gana.
+      final ensayo = LogicaJuego(
+        pasos: sala.pasos,
+        palos: sala.palosEnCarrera,
+        random: sala.generador(),
+      );
+      while (!ensayo.terminada) {
+        ensayo.jugarTurno();
+      }
+      final ganador = ensayo.ganador!;
+
+      await abrir(tester);
+      await tester.enterText(find.byType(TextField), sala.codigo);
+      await tester.tap(find.text('Unirse'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'Ana');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(DropdownButton<Palo>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(ganador.nombre).last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Comenzar'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await _destaparHasta(tester, 'GANA');
+
+      expect(find.text(ganador.nombre.toUpperCase()), findsOneWidget);
+      expect(find.text('Ana'), findsOneWidget);
+      expect(find.text('GANADOR'), findsOneWidget);
     });
 
     testWidgets('dos móviles con el mismo código sacan la misma carta',

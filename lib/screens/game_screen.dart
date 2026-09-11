@@ -32,18 +32,17 @@ class GameScreen extends StatefulWidget {
   /// la misma en todas las modalidades.
   final ModalidadPartida modalidad;
 
-  /// La sala que se está jugando, solo en [ModalidadPartida.sala]. Es lo
-  /// que fija la carrera: todos los que abran ese código ven la misma.
+  /// Si esta partida se comparte por código. La sala no cambia a qué se
+  /// juega —eso lo dice [modalidad]— sino que fija cómo está montada la
+  /// mesa y, sobre todo, la semilla: todos los que abran ese código ven
+  /// exactamente la misma partida.
   final Sala? sala;
 
   const GameScreen({
     super.key,
     this.modalidad = ModalidadPartida.rapida,
     this.sala,
-  }) : assert(
-          (modalidad == ModalidadPartida.sala) == (sala != null),
-          'La sala hace falta exactamente en la modalidad de sala',
-        );
+  });
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -71,11 +70,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   var _rondas = NumeroRondas.porDefecto;
   Campeonato? _campeonato;
 
-  // Solo en la sala: la carrera compartida y el palo de quien juega en
-  // este móvil. La sala puede cambiar sin salir de la pantalla, al pedir
-  // otra carrera, así que no se lee del widget cada vez.
+  // Solo en la sala: la partida compartida y quién juega en este móvil.
+  // La sala puede cambiar sin salir de la pantalla, al pedir otra partida,
+  // así que no se lee del widget cada vez.
   Sala? _sala;
-  var _miPalo = Palo.oros;
+
+  bool get _enSala => _sala != null;
 
   /// La carrera no se detiene con el primer puesto, sino que sigue hasta
   /// repartirlos todos. El campeonato lo necesita para puntuar; en los
@@ -105,23 +105,32 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   /// Una pista nueva, con los palos y el largo que toquen según la
   /// modalidad. En la personalizada corren los 4 caballos igual que en la
   /// partida rápida: los jugadores solo se reparten los palos.
-  LogicaJuego _nuevaPartida() => switch (widget.modalidad) {
-        ModalidadPartida.rapida => LogicaJuego(),
-        ModalidadPartida.unoContraUno =>
-          LogicaJuego(palos: [_jugador1, _jugador2]),
-        ModalidadPartida.personalizada ||
-        ModalidadPartida.campeonato =>
-          LogicaJuego(pasos: _pasos),
-        // La semilla es lo que hace que todos vean la misma carrera.
-        ModalidadPartida.sala =>
-          LogicaJuego(pasos: _sala!.pasos, random: _sala!.generador),
-      };
+  LogicaJuego _nuevaPartida() {
+    final sala = _sala;
+    if (sala != null) {
+      // La semilla es lo que hace que todos vean la misma partida. En el
+      // campeonato cada ronda lleva la suya, distinta pero igual para
+      // todos los que tengan el código.
+      return LogicaJuego(
+        pasos: sala.pasos,
+        palos: sala.palosEnCarrera,
+        random: sala.generador(ronda: _campeonato?.rondasCorridas ?? 0),
+      );
+    }
+    return switch (widget.modalidad) {
+      ModalidadPartida.rapida => LogicaJuego(),
+      ModalidadPartida.unoContraUno =>
+        LogicaJuego(palos: [_jugador1, _jugador2]),
+      ModalidadPartida.personalizada ||
+      ModalidadPartida.campeonato =>
+        LogicaJuego(pasos: _pasos),
+    };
+  }
 
   @override
   void initState() {
     super.initState();
-    _sala = widget.sala;
-    if (widget.modalidad == ModalidadPartida.sala) _apuntarme();
+    _adoptarSala(widget.sala);
     _logica = _nuevaPartida();
     // En la mesa manda la carrera: la guitarra de los menús se calla.
     sonido.ambientar(Musica.ninguna);
@@ -379,32 +388,58 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   /// Quiénes iban a un palo. Solo la personalizada y el campeonato tienen
   /// jugadores con nombre: en las otras modalidades gana el palo a secas,
   /// sin nadie a quien atribuírselo.
-  /// En la sala solo juega quien tiene el móvil delante: su palo es el
-  /// único con nombre, y así el cartel canta si ha ganado él.
-  void _apuntarme() {
-    _jugadores = [Jugador(nombre: 'Tú', palo: _miPalo)];
+  /// Deja la mesa montada como diga la sala. En sala solo juega quien
+  /// tiene el móvil delante: se apunta con un jugador, y así el cartel
+  /// canta si ha ganado él.
+  void _adoptarSala(Sala? sala) {
+    // Al entrar por primera vez se estrena jugador; al pedir otra partida
+    // se conserva el nombre y el palo ya elegidos, que volver a
+    // escribirlos sería un fastidio.
+    final primeraVez = _sala == null;
+    _sala = sala;
+    if (sala == null) return;
+    _pasos = sala.pasos;
+    _rondas = sala.rondas;
+    if (sala.modalidad == ModalidadPartida.unoContraUno) {
+      _jugador1 = sala.palos[0];
+      _jugador2 = sala.palos[1];
+    }
+    if (primeraVez || _jugadores.isEmpty) {
+      _jugadores = [
+        Jugador(nombre: 'Tú', palo: sala.palosEnCarrera.first),
+      ];
+    }
+    // Si su palo no corre en esta sala (1 contra 1), se le pasa a uno que sí.
+    if (!sala.palosEnCarrera.contains(_jugadores.first.palo)) {
+      _jugadores = [
+        Jugador(
+          nombre: _jugadores.first.nombre,
+          palo: sala.palosEnCarrera.first,
+        ),
+      ];
+    }
   }
 
-  void _elegirMiPalo(Palo palo) {
-    setState(() {
-      _miPalo = palo;
-      _apuntarme();
-    });
-  }
-
-  /// Otra carrera en la sala: hace falta una sala nueva, porque repetir la
+  /// Otra partida en la sala: hace falta una sala nueva, porque repetir la
   /// misma daría exactamente el mismo resultado. El código cambia y hay
   /// que volver a pasarlo.
   void _otraSala() {
-    setState(() => _sala = Sala.nueva(pasos: _sala!.pasos));
+    final anterior = _sala!;
+    setState(() {
+      _adoptarSala(
+        Sala.nueva(
+          modalidad: anterior.modalidad,
+          pasos: anterior.pasos,
+          rondas: anterior.rondas,
+          palos: anterior.palos,
+        ),
+      );
+    });
     _revancha();
   }
 
   List<String> _jugadoresDe(Palo palo) {
-    if (widget.modalidad == ModalidadPartida.sala) {
-      return palo == _miPalo ? const ['Tú'] : const [];
-    }
-    if (!widget.modalidad.tieneJugadores) return const [];
+    if (!_enSala && !widget.modalidad.tieneJugadores) return const [];
     return [
       for (final jugador in _jugadores)
         if (jugador.palo == palo) jugador.nombre,
@@ -765,19 +800,28 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   height: 1,
                   color: AppColors.oro.withValues(alpha: 0.5),
                 ),
-                if (widget.modalidad == ModalidadPartida.unoContraUno) ...[
+                // En sala no se configura nada: la mesa la fija el código,
+                // y cada uno solo elige quién es.
+                if (!_enSala &&
+                    widget.modalidad == ModalidadPartida.unoContraUno) ...[
                   const SizedBox(height: 14),
                   _selectorJugadores(),
                 ],
                 const SizedBox(height: 14),
-                // La personalizada trae bastantes ajustes: en horizontal
+                // Los modos con ajustes traen bastante cosa: en horizontal
                 // sobra ancho, así que van al lado de la salida en vez de
                 // empujarla fuera de pantalla.
-                if (widget.modalidad == ModalidadPartida.sala) ...[
-                  const SizedBox(height: 14),
-                  _ajustesSala(),
-                ],
-                if (widget.modalidad.editaJugadores)
+                if (_enSala)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _ajustesSala(),
+                      const SizedBox(width: 26),
+                      _accionesSalida(),
+                    ],
+                  )
+                else if (widget.modalidad.tieneJugadores)
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -849,77 +893,93 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   /// Repetir, en la sala, es crear otra carrera y volver a repartir el
   /// código; en el resto de modos es la revancha de siempre.
-  VoidCallback get _alRepetir =>
-      widget.modalidad == ModalidadPartida.sala ? _otraSala : _revancha;
+  VoidCallback get _alRepetir => _enSala ? _otraSala : _revancha;
 
   /// El código de la sala, para compartirlo, y el palo de quien juega aquí.
   Widget _ajustesSala() {
     final sala = _sala!;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _etiquetaJugador('Código de la sala'),
-        const SizedBox(height: 6),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.oro, width: 1.4),
-              ),
-              child: Text(
-                sala.codigo,
-                style: AppTheme.tituloDisplay.copyWith(
-                  fontSize: 26,
-                  letterSpacing: 5,
+    return SizedBox(
+      width: 330,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(child: _etiquetaJugador('Código de la sala')),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Flexible: son ocho caracteres bien espaciados y, junto a
+              // los dos botones, se salían del ancho del panel.
+              Flexible(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.oro, width: 1.4),
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      sala.codigo,
+                      style: AppTheme.tituloDisplay.copyWith(
+                        fontSize: 23,
+                        letterSpacing: 3,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              onPressed: () => _copiar(sala.codigo, 'Código copiado'),
-              icon: const Icon(Icons.copy_rounded, size: 20),
-              color: AppColors.oroClaro,
-              tooltip: 'Copiar el código',
-            ),
-            IconButton(
-              onPressed: () => _copiar(
-                sala.enlaceDesde(Enlaces.deLaWeb).toString(),
-                'Enlace copiado',
+              const SizedBox(width: 6),
+              IconButton(
+                onPressed: () => _copiar(sala.codigo, 'Código copiado'),
+                icon: const Icon(Icons.copy_rounded, size: 20),
+                color: AppColors.oroClaro,
+                tooltip: 'Copiar el código',
+                visualDensity: VisualDensity.compact,
               ),
-              icon: const Icon(Icons.link_rounded, size: 22),
-              color: AppColors.oroClaro,
-              tooltip: 'Copiar el enlace',
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        SizedBox(
-          width: 300,
-          child: Text(
-            'Quien abra este código verá esta misma carrera',
+              IconButton(
+                onPressed: () => _copiar(
+                  sala.enlaceDesde(Enlaces.deLaWeb).toString(),
+                  'Enlace copiado',
+                ),
+                icon: const Icon(Icons.link_rounded, size: 22),
+                color: AppColors.oroClaro,
+                tooltip: 'Copiar el enlace',
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${sala.nombreModalidad} · quien abra este código '
+            'verá esta misma partida',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 11.5,
+              height: 1.3,
               color: AppColors.oroClaro.withValues(alpha: 0.7),
             ),
           ),
-        ),
-        const SizedBox(height: 14),
-        _etiquetaJugador('Tu caballo'),
-        const SizedBox(height: 6),
-        SelectorPalo(
-          opciones: Palo.values,
-          seleccionado: _miPalo,
-          onCambio: _elegirMiPalo,
-        ),
-      ],
+          const SizedBox(height: 14),
+          _etiquetaJugador('Tu jugador'),
+          const SizedBox(height: 6),
+          EditorJugadorUnico(
+            inicial: _jugadores.first,
+            opciones: sala.palosEnCarrera,
+            onCambio: _cambiarMiJugador,
+          ),
+        ],
+      ),
     );
   }
+
+  /// Sin `setState`: la fila se repinta sola y la lista solo se lee al
+  /// cantar el ganador, que ya llega con su propio repintado.
+  void _cambiarMiJugador(Jugador jugador) => _jugadores = [jugador];
 
   void _copiar(String texto, String aviso) {
     Clipboard.setData(ClipboardData(text: texto));

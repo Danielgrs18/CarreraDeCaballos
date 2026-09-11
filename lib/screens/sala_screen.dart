@@ -2,17 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../game/ajustes_partida.dart';
+import '../game/campeonato.dart';
 import '../game/enlaces.dart';
 import '../game/sala.dart';
+import '../models/carta.dart';
 import '../theme/app_theme.dart';
 import '../widgets/menu_app.dart';
+import '../widgets/selector_palo.dart';
 import '../widgets/tapete.dart';
 import 'game_screen.dart';
 
 /// Crear una sala privada o unirse a la de un amigo.
 ///
-/// No hay servidor detrás: la carrera va dentro del código. Quien lo abra
-/// verá exactamente la misma, con el mismo ganador, desde su propio móvil.
+/// No hay servidor detrás: la partida entera va dentro del código. Quien lo
+/// abra verá exactamente la misma, con el mismo ganador, desde su móvil.
 class SalaScreen extends StatefulWidget {
   const SalaScreen({super.key});
 
@@ -23,7 +26,12 @@ class SalaScreen extends StatefulWidget {
 class _SalaScreenState extends State<SalaScreen> {
   final _codigo = TextEditingController();
 
+  var _modalidad = ModalidadPartida.rapida;
   var _pasos = LongitudPista.porDefecto;
+  var _rondas = NumeroRondas.porDefecto;
+  var _palo1 = Palo.oros;
+  var _palo2 = Palo.copas;
+
   Sala? _creada;
   String? _error;
 
@@ -33,8 +41,24 @@ class _SalaScreenState extends State<SalaScreen> {
     super.dispose();
   }
 
+  /// Cualquier cambio en la mesa cambia la partida, así que el código que
+  /// hubiera enseñado deja de valer y se retira.
+  void _cambiar(VoidCallback ajuste) {
+    setState(() {
+      ajuste();
+      _creada = null;
+    });
+  }
+
   void _crear() {
-    setState(() => _creada = Sala.nueva(pasos: _pasos));
+    setState(() {
+      _creada = Sala.nueva(
+        modalidad: _modalidad,
+        pasos: _pasos,
+        rondas: _rondas,
+        palos: [_palo1, _palo2],
+      );
+    });
   }
 
   void _unirse() {
@@ -51,10 +75,7 @@ class _SalaScreenState extends State<SalaScreen> {
   void _entrar(Sala sala) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => GameScreen(
-          modalidad: ModalidadPartida.sala,
-          sala: sala,
-        ),
+        builder: (_) => GameScreen(modalidad: sala.modalidad, sala: sala),
       ),
     );
   }
@@ -84,9 +105,9 @@ class _SalaScreenState extends State<SalaScreen> {
                       padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
                       children: [
                         Text(
-                          'Todos los que abran el mismo código verán '
-                          'exactamente la misma carrera, cada uno desde su '
-                          'móvil. No hace falta registrarse.',
+                          'Elige a qué jugáis, comparte el código y todos '
+                          'veréis exactamente la misma partida, cada uno '
+                          'desde su móvil. No hace falta registrarse.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 13,
@@ -94,7 +115,7 @@ class _SalaScreenState extends State<SalaScreen> {
                             color: AppColors.oroClaro.withValues(alpha: 0.8),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 22),
                         _bloqueCrear(),
                         const SizedBox(height: 22),
                         _bloqueUnirse(),
@@ -110,6 +131,8 @@ class _SalaScreenState extends State<SalaScreen> {
     );
   }
 
+  // --- Crear ---------------------------------------------------------------
+
   Widget _bloqueCrear() {
     final creada = _creada;
 
@@ -117,43 +140,11 @@ class _SalaScreenState extends State<SalaScreen> {
       titulo: 'Crear una sala',
       icono: Icons.add_circle_outline_rounded,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Largo de la pista',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.oroClaro.withValues(alpha: 0.85),
-                ),
-              ),
-            ),
-            Text(
-              _pasos == 1 ? '1 paso' : '$_pasos pasos',
-              style: const TextStyle(
-                fontFamily: AppTheme.familiaTitulo,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: AppColors.oroClaro,
-              ),
-            ),
-          ],
-        ),
-        Slider(
-          value: _pasos.toDouble(),
-          min: LongitudPista.minimo.toDouble(),
-          max: LongitudPista.maximo.toDouble(),
-          divisions: LongitudPista.maximo - LongitudPista.minimo,
-          label: '$_pasos',
-          activeColor: AppColors.oro,
-          // Cambiar la pista cambia la carrera: el código anterior ya no
-          // vale, así que se retira en vez de dejarlo enseñado.
-          onChanged: (valor) => setState(() {
-            _pasos = valor.round();
-            _creada = null;
-          }),
-        ),
-        const SizedBox(height: 4),
+        const _Rotulo('A qué jugáis'),
+        const SizedBox(height: 8),
+        _selectorModalidad(),
+        ..._ajustesDelModo(),
+        const SizedBox(height: 14),
         if (creada == null)
           SizedBox(
             width: double.infinity,
@@ -176,6 +167,127 @@ class _SalaScreenState extends State<SalaScreen> {
     );
   }
 
+  Widget _selectorModalidad() {
+    return Column(
+      children: [
+        for (final modalidad in Sala.modalidades)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: _OpcionModo(
+              titulo: _nombreDe(modalidad),
+              descripcion: _descripcionDe(modalidad),
+              elegida: _modalidad == modalidad,
+              onTap: () => _cambiar(() => _modalidad = modalidad),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Lo que cada modo deja configurar. La partida rápida no deja nada: es
+  /// justo lo que la hace rápida.
+  List<Widget> _ajustesDelModo() {
+    switch (_modalidad) {
+      case ModalidadPartida.rapida:
+        return const [];
+
+      case ModalidadPartida.unoContraUno:
+        final disponibles = Palo.values.where((p) => p != _palo1).toList();
+        return [
+          const SizedBox(height: 10),
+          const _Rotulo('Los dos caballos'),
+          const SizedBox(height: 8),
+          SelectorPalo(
+            opciones: Palo.values,
+            seleccionado: _palo1,
+            onCambio: (palo) => _cambiar(() {
+              _palo1 = palo;
+              if (_palo2 == palo) {
+                _palo2 = Palo.values.firstWhere((p) => p != palo);
+              }
+            }),
+          ),
+          const SizedBox(height: 8),
+          SelectorPalo(
+            opciones: disponibles,
+            seleccionado: _palo2,
+            onCambio: (palo) => _cambiar(() => _palo2 = palo),
+          ),
+        ];
+
+      case ModalidadPartida.personalizada:
+        return [_regleta('Largo de la pista', _pasos, LongitudPista.minimo,
+            LongitudPista.maximo, (v) => _cambiar(() => _pasos = v),
+            (n) => n == 1 ? '1 paso' : '$n pasos')];
+
+      case ModalidadPartida.campeonato:
+        return [
+          _regleta('Largo de la pista', _pasos, LongitudPista.minimo,
+              LongitudPista.maximo, (v) => _cambiar(() => _pasos = v),
+              (n) => n == 1 ? '1 paso' : '$n pasos'),
+          _regleta('Rondas', _rondas, NumeroRondas.minimo,
+              NumeroRondas.maximo, (v) => _cambiar(() => _rondas = v),
+              (n) => n == 1 ? '1 ronda' : '$n rondas'),
+        ];
+    }
+  }
+
+  Widget _regleta(
+    String titulo,
+    int valor,
+    int minimo,
+    int maximo,
+    ValueChanged<int> onCambio,
+    String Function(int) etiqueta,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(child: _Rotulo(titulo)),
+            Text(
+              etiqueta(valor),
+              style: const TextStyle(
+                fontFamily: AppTheme.familiaTitulo,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: AppColors.oroClaro,
+              ),
+            ),
+          ],
+        ),
+        Slider(
+          value: valor.toDouble(),
+          min: minimo.toDouble(),
+          max: maximo.toDouble(),
+          divisions: maximo - minimo,
+          label: '$valor',
+          activeColor: AppColors.oro,
+          onChanged: (v) => onCambio(v.round()),
+        ),
+      ],
+    );
+  }
+
+  static String _nombreDe(ModalidadPartida modalidad) => switch (modalidad) {
+        ModalidadPartida.rapida => 'Partida rápida',
+        ModalidadPartida.unoContraUno => '1 contra 1',
+        ModalidadPartida.personalizada => 'Partida personalizada',
+        ModalidadPartida.campeonato => 'Campeonato',
+      };
+
+  static String _descripcionDe(ModalidadPartida modalidad) =>
+      switch (modalidad) {
+        ModalidadPartida.rapida => 'Los cuatro caballos, pista de siempre',
+        ModalidadPartida.unoContraUno => 'Solo dos palos, cara a cara',
+        ModalidadPartida.personalizada => 'Elegís el largo de la pista',
+        ModalidadPartida.campeonato => 'Varias carreras con marcador',
+      };
+
+  // --- Unirse --------------------------------------------------------------
+
   Widget _bloqueUnirse() {
     return _Bloque(
       titulo: 'Unirse a una sala',
@@ -192,7 +304,7 @@ class _SalaScreenState extends State<SalaScreen> {
           style: const TextStyle(
             fontFamily: AppTheme.familiaTitulo,
             fontSize: 22,
-            letterSpacing: 6,
+            letterSpacing: 5,
             fontWeight: FontWeight.bold,
             color: AppColors.oroClaro,
           ),
@@ -202,7 +314,7 @@ class _SalaScreenState extends State<SalaScreen> {
             hintStyle: TextStyle(
               fontFamily: AppTheme.familiaTitulo,
               fontSize: 22,
-              letterSpacing: 6,
+              letterSpacing: 5,
               color: AppColors.oroClaro.withValues(alpha: 0.3),
             ),
             errorText: _error,
@@ -255,6 +367,89 @@ class _SalaScreenState extends State<SalaScreen> {
   }
 }
 
+/// Uno de los modos a los que se puede jugar en sala.
+class _OpcionModo extends StatelessWidget {
+  final String titulo;
+  final String descripcion;
+  final bool elegida;
+  final VoidCallback onTap;
+
+  const _OpcionModo({
+    required this.titulo,
+    required this.descripcion,
+    required this.elegida,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      selected: elegida,
+      button: true,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: elegida
+                  ? AppColors.rojoOscuro.withValues(alpha: 0.65)
+                  : Colors.black.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: elegida
+                    ? AppColors.oroClaro
+                    : AppColors.oro.withValues(alpha: 0.3),
+                width: elegida ? 1.8 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  elegida
+                      ? Icons.radio_button_checked_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  size: 18,
+                  color: elegida
+                      ? AppColors.oroClaro
+                      : AppColors.oroClaro.withValues(alpha: 0.5),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        titulo,
+                        style: const TextStyle(
+                          fontFamily: AppTheme.familiaTitulo,
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.oroClaro,
+                        ),
+                      ),
+                      Text(
+                        descripcion,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: AppColors.oroClaro.withValues(alpha: 0.65),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// El código recién creado, listo para pasárselo a alguien.
 class _CodigoCreado extends StatelessWidget {
   final Sala sala;
@@ -281,12 +476,14 @@ class _CodigoCreado extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.oro, width: 1.6),
           ),
-          child: Text(
-            sala.codigo,
-            textAlign: TextAlign.center,
-            style: AppTheme.tituloDisplay.copyWith(
-              fontSize: 34,
-              letterSpacing: 8,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              sala.codigo,
+              style: AppTheme.tituloDisplay.copyWith(
+                fontSize: 32,
+                letterSpacing: 6,
+              ),
             ),
           ),
         ),
@@ -356,6 +553,26 @@ class _Bloque extends StatelessWidget {
           const SizedBox(height: 12),
           ...children,
         ],
+      ),
+    );
+  }
+}
+
+class _Rotulo extends StatelessWidget {
+  final String texto;
+
+  const _Rotulo(this.texto);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      texto.toUpperCase(),
+      style: TextStyle(
+        fontFamily: AppTheme.familiaTitulo,
+        fontSize: 11,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 1.4,
+        color: AppColors.oroClaro.withValues(alpha: 0.65),
       ),
     );
   }

@@ -281,6 +281,66 @@ class _EditorJugadoresState extends State<EditorJugadores> {
   }
 }
 
+/// Un jugador suelto —su nombre y su palo—, con la misma pinta que las
+/// filas de la partida personalizada.
+///
+/// Lo usa la sala: allí cada uno se apunta solo a sí mismo desde su móvil,
+/// así que no hay lista que crecer ni botón de quitar.
+class EditorJugadorUnico extends StatefulWidget {
+  final Jugador inicial;
+  final ValueChanged<Jugador> onCambio;
+
+  /// Los palos que corren en esta partida.
+  final List<Palo> opciones;
+
+  const EditorJugadorUnico({
+    super.key,
+    required this.inicial,
+    required this.onCambio,
+    this.opciones = Palo.values,
+  });
+
+  @override
+  State<EditorJugadorUnico> createState() => _EditorJugadorUnicoState();
+}
+
+class _EditorJugadorUnicoState extends State<EditorJugadorUnico> {
+  late final _FilaJugador _fila = _FilaJugador(
+    controlador: TextEditingController(text: widget.inicial.nombre),
+    palo: widget.inicial.palo,
+  );
+
+  @override
+  void dispose() {
+    _fila.controlador.dispose();
+    super.dispose();
+  }
+
+  void _avisar() {
+    final escrito = _fila.controlador.text.trim();
+    widget.onCambio(
+      Jugador(nombre: escrito.isEmpty ? 'Tú' : escrito, palo: _fila.palo),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _Fila(
+      fila: _fila,
+      posicion: 0,
+      sePuedeQuitar: false,
+      opciones: widget.opciones,
+      pista: 'Tu nombre',
+      onNombre: _avisar,
+      onPalo: (palo) {
+        setState(() => _fila.palo = palo);
+        _avisar();
+      },
+      onQuitar: () {},
+    );
+  }
+}
+
 class _Fila extends StatelessWidget {
   final _FilaJugador fila;
   final int posicion;
@@ -288,6 +348,10 @@ class _Fila extends StatelessWidget {
   final VoidCallback onNombre;
   final ValueChanged<Palo> onPalo;
   final VoidCallback onQuitar;
+  final List<Palo> opciones;
+
+  /// Qué poner en el campo vacío. Por defecto, "Jugador n".
+  final String? pista;
 
   const _Fila({
     required this.fila,
@@ -296,6 +360,8 @@ class _Fila extends StatelessWidget {
     required this.onNombre,
     required this.onPalo,
     required this.onQuitar,
+    this.opciones = Palo.values,
+    this.pista,
   });
 
   @override
@@ -315,7 +381,7 @@ class _Fila extends StatelessWidget {
               isDense: true,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-              hintText: 'Jugador ${posicion + 1}',
+              hintText: pista ?? 'Jugador ${posicion + 1}',
               hintStyle: TextStyle(
                 fontSize: 13.5,
                 color: AppColors.oroClaro.withValues(alpha: 0.4),
@@ -329,7 +395,11 @@ class _Fila extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 6),
-        _DesplegablePalo(palo: fila.palo, onCambio: onPalo),
+        _DesplegablePalo(
+          palo: fila.palo,
+          onCambio: onPalo,
+          opciones: opciones,
+        ),
         SizedBox(
           width: 30,
           child: sePuedeQuitar
@@ -357,7 +427,15 @@ class _DesplegablePalo extends StatelessWidget {
   final Palo palo;
   final ValueChanged<Palo> onCambio;
 
-  const _DesplegablePalo({required this.palo, required this.onCambio});
+  /// Los palos entre los que se puede elegir. En el 1 contra 1 de una sala
+  /// solo corren dos, y ofrecer los cuatro sería engañar.
+  final List<Palo> opciones;
+
+  const _DesplegablePalo({
+    required this.palo,
+    required this.onCambio,
+    this.opciones = Palo.values,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -383,7 +461,7 @@ class _DesplegablePalo extends StatelessWidget {
             if (elegido != null) onCambio(elegido);
           },
           items: [
-            for (final opcion in Palo.values)
+            for (final opcion in opciones)
               DropdownMenuItem(
                 value: opcion,
                 child: Row(

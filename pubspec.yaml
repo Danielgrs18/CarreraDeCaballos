@@ -24,9 +24,10 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  assets:
-    # Sintetizados por tool/generar_sonidos.dart, no descargados.
-    - assets/audio/
+  # Cuando haya ficheros de audio, se declaran aquí y se pone `hayAudio`
+  # a true en lib/game/sonido.dart:
+  #   assets:
+  #     - assets/audio/
 
 
 flutter_launcher_icons:

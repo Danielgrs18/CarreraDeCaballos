@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../game/ajustes_app.dart';
 import '../game/enlaces.dart';
+import '../game/sonido.dart';
 import '../theme/app_theme.dart';
 
 /// El botón de menú de la esquina superior derecha, el mismo en todas las
@@ -107,15 +108,18 @@ class _DialogoMenu extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _Interruptor(
-              titulo: 'Silenciar',
-              icono: ajustesApp.silencio
-                  ? Icons.volume_off_rounded
-                  : Icons.volume_up_rounded,
-              nota: 'La música y el barajeo de las cartas',
-              valor: ajustesApp.silencio,
-              onCambio: (valor) => ajustesApp.silencio = valor,
-            ),
+            // Sin ficheros de audio no hay nada que callar: antes que
+            // enseñar un mando que no manda, no se enseña.
+            if (hayAudio)
+              _Interruptor(
+                titulo: 'Silenciar',
+                icono: ajustesApp.silencio
+                    ? Icons.volume_off_rounded
+                    : Icons.volume_up_rounded,
+                nota: 'La música y los efectos del juego',
+                valor: ajustesApp.silencio,
+                onCambio: (valor) => ajustesApp.silencio = valor,
+              ),
             _Interruptor(
               titulo: 'Vibración',
               icono: Icons.vibration_rounded,

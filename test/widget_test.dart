@@ -1051,34 +1051,28 @@ void main() {
   });
 
   group('Sonido', () {
-    testWidgets('callado hasta que el usuario toca la página',
-        (tester) async {
+    testWidgets('sin ficheros de audio la app va callada', (tester) async {
       await tester.pumpWidget(const CarreraCaballosApp());
-
-      // Los navegadores no dejan sonar nada sin un gesto previo, así que
-      // ni se intenta: se espera.
       expect(sonido.puedeSonar, isFalse);
 
+      // Ni siquiera después de tocar la pantalla, que es lo que desbloquea
+      // el audio en los navegadores.
       await tester.tap(find.text('Partida rápida'));
       await tester.pumpAndSettle();
-      expect(sonido.puedeSonar, isTrue);
+      expect(sonido.puedeSonar, isFalse);
     });
 
-    testWidgets('silenciar desde el menú calla el sonido', (tester) async {
-      await tester.pumpWidget(const CarreraCaballosApp());
-      await tester.tap(find.byTooltip('Menú'));
-      await tester.pumpAndSettle();
-      expect(sonido.puedeSonar, isTrue);
+    test('silenciar y el gesto del usuario siguen contando', () {
+      // La política no se pierde por no haber ficheros: en cuanto los haya,
+      // estas dos condiciones vuelven a mandar.
+      ajustesApp.reiniciar();
+      sonido.reiniciar();
+      expect(ajustesApp.silencio, isFalse);
 
-      await tester.tap(find.text('Silenciar'));
-      await tester.pumpAndSettle();
-      expect(ajustesApp.silencio, isTrue);
+      ajustesApp.silencio = true;
       expect(sonido.puedeSonar, isFalse);
-
-      // Y al quitarlo vuelve a poder sonar, sin salir del menú.
-      await tester.tap(find.text('Silenciar'));
-      await tester.pumpAndSettle();
-      expect(sonido.puedeSonar, isTrue);
+      ajustesApp.silencio = false;
+      expect(sonido.puedeSonar, isFalse, reason: 'aún falta el audio');
     });
   });
 
@@ -1103,20 +1097,16 @@ void main() {
       await tester.tap(find.byTooltip('Menú'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Silenciar'), findsOneWidget);
       expect(find.text('Vibración'), findsOneWidget);
       expect(find.text('Pantalla siempre encendida'), findsOneWidget);
-      expect(find.text('La música y el barajeo de las cartas'), findsOneWidget);
+      // Sin ficheros de audio no hay nada que silenciar, y el mando no sale.
+      expect(hayAudio, isFalse);
+      expect(find.text('Silenciar'), findsNothing);
 
       expect(ajustesApp.vibracion, isTrue);
       await tester.tap(find.text('Vibración'));
       await tester.pumpAndSettle();
       expect(ajustesApp.vibracion, isFalse);
-
-      expect(ajustesApp.silencio, isFalse);
-      await tester.tap(find.text('Silenciar'));
-      await tester.pumpAndSettle();
-      expect(ajustesApp.silencio, isTrue);
 
       await tester.tap(find.text('Cerrar'));
       await tester.pumpAndSettle();
@@ -1124,7 +1114,7 @@ void main() {
       // Y lo elegido sigue puesto al volver a abrirlo.
       await tester.tap(find.byTooltip('Menú'));
       await tester.pumpAndSettle();
-      expect(ajustesApp.silencio, isTrue);
+      expect(ajustesApp.vibracion, isFalse);
     });
 
     testWidgets('la entrada de apoyo solo sale si hay enlace configurado',
@@ -1167,7 +1157,7 @@ void main() {
       await tester.tap(find.text('Entendido'));
       await tester.pumpAndSettle();
       // Se vuelve al menú, que sigue abierto detrás.
-      expect(find.text('Silenciar'), findsOneWidget);
+      expect(find.text('Vibración'), findsOneWidget);
     });
 
     testWidgets('abrir el menú para la carrera automática', (tester) async {

@@ -3,16 +3,29 @@ import 'package:flutter/foundation.dart';
 
 import 'ajustes_app.dart';
 
+/// Todavía no hay ficheros de audio en el proyecto.
+///
+/// Mientras esto siga en `false`, la app va en silencio: no se toca el
+/// reproductor, no se pide ningún fichero y el menú ni siquiera enseña el
+/// interruptor de silenciar, que sería un mando sin nada que mandar.
+///
+/// Para encenderlo hacen falta tres cosas:
+///  1. Dejar los ficheros en `assets/audio/` con los nombres que dicen
+///     [Musica] y [Sonido.barajar].
+///  2. Declarar `assets/audio/` en la sección `flutter:` de `pubspec.yaml`.
+///  3. Poner esto en `true`.
+const hayAudio = false;
+
 /// Lo que puede estar sonando de fondo.
 enum Musica {
   /// Silencio: la mesa con el cartel de victoria, por ejemplo.
   ninguna(null, 0),
 
-  /// Guitarra española, en los menús.
-  ambiente('audio/ambiente.wav', 0.42),
+  /// Música de los menús.
+  ambiente('audio/ambiente.mp3', 0.42),
 
-  /// La corneta sobre el galope, mientras se corre.
-  carrera('audio/carrera.wav', 0.5);
+  /// Música de la carrera.
+  carrera('audio/carrera.mp3', 0.5);
 
   const Musica(this.fichero, this.volumen);
 
@@ -45,15 +58,17 @@ class Sonido {
   /// sonar y se arranca en cuanto haya un gesto.
   var _desbloqueado = false;
 
-  /// Si las reglas permiten sonar ahora mismo: ya hubo gesto del usuario y
-  /// no está silenciado. Es la política, no el aparato: ver [desactivado].
-  bool get puedeSonar => _desbloqueado && !ajustesApp.silencio;
+  /// Si las reglas permiten sonar ahora mismo: hay ficheros, ya hubo gesto
+  /// del usuario y no está silenciado.
+  bool get puedeSonar => hayAudio && _desbloqueado && !ajustesApp.silencio;
 
   /// Apaga el sonido de raíz, sin llegar a tocar el plugin. Los tests lo
   /// ponen: ahí no hay audio detrás, y los fallos del plugin llegan por
   /// caminos asíncronos que no se pueden atrapar desde aquí.
   @visibleForTesting
   static bool desactivado = false;
+
+  bool get _apagado => desactivado || !hayAudio;
 
   /// Deja sonando lo que toque en cada pantalla.
   void ambientar(Musica musica) {
@@ -64,9 +79,9 @@ class Sonido {
 
   /// El barajeo, al empezar una partida y al reciclar el mazo.
   void barajar() {
-    if (desactivado || !puedeSonar) return;
+    if (_apagado || !puedeSonar) return;
     _intentar(() => _efectos.play(
-          AssetSource('audio/barajeo.wav'),
+          AssetSource('audio/barajeo.mp3'),
           volume: 0.8,
         ));
   }
@@ -80,7 +95,7 @@ class Sonido {
   }
 
   void _sincronizar() {
-    if (desactivado) return;
+    if (_apagado) return;
     final objetivo = puedeSonar ? _deseada : Musica.ninguna;
     if (objetivo == _sonando) return;
     _sonando = objetivo;
@@ -114,7 +129,7 @@ class Sonido {
     _desbloqueado = false;
     _deseada = Musica.ninguna;
     _sonando = Musica.ninguna;
-    if (!desactivado) _intentar(() => _fondo.stop());
+    if (!_apagado) _intentar(() => _fondo.stop());
   }
 }
 

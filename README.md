@@ -112,7 +112,7 @@ El botón de la esquina superior derecha abre el mismo menú en todas las
 pantallas. Lo que se elija se guarda y sigue puesto en el siguiente
 arranque:
 
-- **Silenciar**: calla la música y el barajeo, al momento.
+- **Silenciar**: solo aparece cuando haya ficheros de audio.
 - **Vibración**: el toque al destapar carta a mano.
 - **Pantalla siempre encendida**: viene puesto, porque en automático es
   fácil dejar el móvil apoyado sin tocarlo. Apagarlo se nota al momento,
@@ -128,36 +128,24 @@ donación equivocado manda el dinero a otro sitio.
 
 ## Sonido
 
-Tres piezas, y ninguna es un fichero descargado: se **sintetizan por
-código**, igual que las cartas se pintan por código. Ni licencias que
-respetar ni megas que bajar, y la melodía se retoca cambiando una tabla de
-notas.
+**Todavía no hay.** Los sonidos que había, sintetizados por código, se
+quitaron por no dar la talla; los ficheros los traerá el autor.
 
-| Cuándo | Qué suena |
-|---|---|
-| Menús | Guitarra española en bucle: cadencia andaluza (Am-G-F-E) arpegiada, con cuerda pulsada por Karplus-Strong. |
-| Al empezar y al reciclar el mazo | Barajeo: dos riffles de ruido filtrado y el taco cuadrándose contra la mesa. |
-| Durante la carrera | La corneta de carreras sobre un galope, en bucle. Solo usa notas de la serie armónica, que es lo único que puede dar una corneta de verdad. |
+El reproductor sí se queda montado, pero dormido: mientras `hayAudio` siga
+en `false` en `lib/game/sonido.dart`, la app no toca el plugin, no pide
+ningún fichero y el menú ni siquiera enseña el interruptor de silenciar,
+que sería un mando sin nada que mandar. Para encenderlo:
 
-```bash
-dart run tool/generar_sonidos.dart   # escribe assets/audio/*.wav
-```
+1. Dejar los ficheros en `assets/audio/` (`ambiente.mp3` para los menús,
+   `carrera.mp3` para la carrera y `barajeo.mp3` para el efecto; los
+   nombres se cambian en el enum `Musica`).
+2. Descomentar `assets/audio/` en la sección `flutter:` de `pubspec.yaml`.
+3. Poner `hayAudio` en `true`.
 
-Los bucles empalman metiendo la cola de las últimas notas por el principio,
-así que no hay corte al repetir.
-
-Dos cosas que condicionan el diseño:
-
-- **Los navegadores no dejan sonar nada** hasta que el usuario toca la
-  página. Por eso no se intenta hasta el primer gesto: se apunta lo que
-  debería sonar y arranca entonces. El `Listener` que lo detecta está en
-  `main.dart` y vale para toda la app.
-- **El sonido nunca puede tumbar la partida.** Si no hay plugin, ni
-  aparato, ni permiso, se sigue en silencio. En los tests se apaga de raíz
-  con `Sonido.desactivado`, porque los fallos del plugin llegan por caminos
-  asíncronos que no se pueden atrapar.
-
-El interruptor de *Silenciar* del menú ya calla de verdad, al momento.
+Queda ya resuelto lo que condiciona el diseño: los navegadores no dejan
+sonar nada hasta que el usuario toca la página, así que hasta el primer
+gesto solo se apunta lo que debería sonar; y no poder sonar —sin plugin,
+sin aparato o sin permiso— nunca tumba la partida.
 
 ## Personalizar
 

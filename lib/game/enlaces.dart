@@ -5,13 +5,13 @@
 class Enlaces {
   const Enlaces._();
 
-  /// Página para apoyar el proyecto: Ko-fi, Buy Me a Coffee, PayPal.me,
-  /// GitHub Sponsors... la que sea.
+  /// Página para apoyar el proyecto.
   ///
-  /// PENDIENTE: pegar aquí la dirección propia. Mientras siga vacía, el
-  /// menú no enseña la entrada de apoyo. No se pone ninguna de ejemplo a
-  /// propósito: un enlace de donación equivocado manda dinero a otro.
-  static const donacion = '';
+  /// Es un PayPal.Me a propósito, y no la dirección de correo: el nombre de
+  /// usuario no se puede rastrear para mandar spam, y el correo en un
+  /// repositorio público sí. Si algún día se cambia por otra pasarela, basta
+  /// con sustituir esta línea; vaciarla esconde la entrada del menú.
+  static const donacion = 'https://www.paypal.me/danielgrs18';
 
   /// El repositorio, que es público.
   static const codigo = 'https://github.com/Danielgrs18/CarreraDeCaballos';

@@ -118,13 +118,12 @@ arranque:
   fácil dejar el móvil apoyado sin tocarlo. Apagarlo se nota al momento,
   aunque la carrera esté a medias.
 - **Cómo se juega**: las reglas, por si alguien llega sin conocerlas.
-- **Código fuente** y, cuando haya dirección configurada, **Apoyar el
-  proyecto**.
+- **Código fuente** y **Apoyar el proyecto**.
 
-El enlace de apoyo vive en `lib/game/enlaces.dart` y **viene vacío a
-propósito**: hasta que no se pegue ahí una dirección propia, la entrada no
-aparece en el menú. No se deja ninguna de ejemplo porque un enlace de
-donación equivocado manda el dinero a otro sitio.
+Los dos enlaces viven en `lib/game/enlaces.dart`. El de apoyo es un
+PayPal.Me y no una dirección de correo a propósito: el correo en un
+repositorio público acaba rastreado por robots de spam, y el nombre de
+usuario no expone nada. Vaciar esa línea esconde la entrada del menú.
 
 ## Sonido
 

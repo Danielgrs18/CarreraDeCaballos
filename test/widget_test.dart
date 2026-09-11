@@ -1117,18 +1117,27 @@ void main() {
       expect(ajustesApp.vibracion, isFalse);
     });
 
-    testWidgets('la entrada de apoyo solo sale si hay enlace configurado',
+    testWidgets('el menú lleva al código y a apoyar el proyecto',
         (tester) async {
       await tester.pumpWidget(const CarreraCaballosApp());
       await tester.tap(find.byTooltip('Menú'));
       await tester.pumpAndSettle();
 
-      // El código sí es público y siempre está.
       expect(find.text('Código fuente'), findsOneWidget);
-      // La de donaciones espera a que se pegue una dirección propia: una
-      // de ejemplo mandaría el dinero a otra parte.
-      expect(Enlaces.hayDonacion, isFalse);
-      expect(find.text('Apoyar el proyecto'), findsNothing);
+      expect(find.text('Apoyar el proyecto'), findsOneWidget);
+    });
+
+    test('los enlaces del menú son direcciones web con sentido', () {
+      expect(Enlaces.hayDonacion, isTrue);
+      for (final enlace in [Enlaces.donacion, Enlaces.codigo]) {
+        final uri = Uri.tryParse(enlace);
+        expect(uri, isNotNull, reason: enlace);
+        expect(uri!.scheme, 'https', reason: enlace);
+        expect(uri.host, isNotEmpty, reason: enlace);
+      }
+      // El apoyo va por usuario, no por correo: una dirección de correo en
+      // un repositorio público es una invitación al spam.
+      expect(Enlaces.donacion, isNot(contains('@')));
     });
 
     testWidgets('desde el menú se llega a las reglas', (tester) async {
